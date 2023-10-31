@@ -71,7 +71,7 @@ docker run -d \
 ```
 # Here /mnt is the Storage location, I have my HDD's mounted to /mnt. Replace accordingly
 
-docker run -d --name fileBrowser\
+docker run -d --name fileBrowser \
     -v /mnt:/srv \
     -v ${HOME}/docker/filebrowser/filebrowser.db:/database/filebrowser.db \
     -v ${HOME}/docker/filebrowser/settings.json:/config/settings.json \
@@ -100,7 +100,7 @@ docker run -d \
     -v ${HOME}/docker/jellyfin/config:/config \
     -v ${HOME}/docker/jellyfin/cache:/cache \
     -v {MEDIA LOCATION}:/media \
-    --device /dev/dri/renderD128:/dev/dri/renderD128 \ #Optional If you have GPU this nees to be replaced
+    --device /dev/dri/renderD128:/dev/dri/renderD128 \ # Optional If you have GPU this need to be replaced
     jellyfin/jellyfin
 ```
 
