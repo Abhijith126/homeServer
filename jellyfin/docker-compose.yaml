@@ -1,0 +1,15 @@
+version: '3.5'
+services:
+    jellyfin:
+        image: jellyfin/jellyfin
+        container_name: jellyfin
+        restart: 'unless-stopped'
+        user: uid:gid
+        ports:
+            - '8096:8096'
+        volumes:
+            - '${HOME}/docker/jellyfin/config:/config'
+            - '${HOME}/docker/jellyfin/cache:/cache'
+            - '{PATH_TO_MEDIA}:/media'
+        devices: 
+            - '/dev/dri/renderD128:/dev/dri/renderD128' # Optional If you have GPU this need to be replaced jellyfin/jellyfin
