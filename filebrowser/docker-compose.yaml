@@ -1,0 +1,12 @@
+version: '3.5'
+services:
+    filebrowser:
+        container_name: fileBrowser
+        volumes:
+            - '{PATH_TO_HDD}:/srv'
+            - '${HOME}/docker/filebrowser/filebrowser.db:/database/filebrowser.db'
+            - '${HOME}/docker/filebrowser/settings.json:/config/settings.json'
+        user: uid:gid
+        ports:
+            - '8082:80'
+        image: filebrowser/filebrowser

@@ -1,0 +1,19 @@
+version: '3.5'
+services:
+    qbittorrentvpn:
+        privileged: true
+        container_name: qbittorrent
+        volumes:
+            - '${HOME}/docker/qbittorrent/config:/config'
+            - '{DOWNLOAD_FOLDER}:/downloads'
+        environment:
+            - VPN_ENABLED=yes
+            - VPN_USERNAME=VPN_USERNAME
+            - VPN_PASSWORD=VPN_PASSWORD
+            - LAN_NETWORK=192.168.1.0/24
+            - NAME_SERVERS=8.8.8.8,8.8.4.4
+        ports:
+            - '8083:8080'
+            - '8999:8999'
+            - '8999:8999/udp'
+        image: markusmcnugen/qbittorrentvpn

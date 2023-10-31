@@ -1,0 +1,15 @@
+version: '3.5'
+services:
+    duplicati:
+        container_name: duplicati
+        user: uid:gid
+        environment:
+            - TZ=Europe/Amsterdam
+        ports:
+            - '8200:8200'
+        volumes:
+            - '${HOME}/docker/duplicati/config:/config'
+            - '{BACKUP_LOCATION}:/backups'
+            - '{SOURCE_LOCATION}:/source'
+        restart: unless-stopped
+        image: 'lscr.io/linuxserver/duplicati:latest'
