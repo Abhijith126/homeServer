@@ -141,6 +141,7 @@ docker run -d \
 
 docker run --privileged  -d \
     --name=qbittorrent \
+    --restart unless-stopped \
     -v ${HOME}/docker/qbittorrent/config:/config \
     -v {DOWNLOAD_FOLDER}:/downloads \
     -e "VPN_ENABLED=yes" \
