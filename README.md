@@ -54,6 +54,7 @@ docker run -d \
     -p 9443:9443 \
     --name portainer \
     --restart always \
+    --label=com.centurylinklabs.watchtower.enable=true \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v ${HOME}/docker/portainer:/data \
     portainer/portainer-ce:latest
@@ -73,8 +74,9 @@ docker run -d \
 
 docker run -d --name fileBrowser \
     -v /mnt:/srv \
-    -v ${HOME}/docker/filebrowser/filebrowser.db:/database/filebrowser.db \
-    -v ${HOME}/docker/filebrowser/settings.json:/config/settings.json \
+    -v ${HOME}/docker/filebrowser/filebrowser.db:/filebrowser.db \
+    --label=com.centurylinklabs.watchtower.enable=true \
+    -v ${HOME}/docker/filebrowser/settings.json:/.filebrowser.json \
     -u $(id -u):$(id -g) \
     -p 8082:80 \
     filebrowser/filebrowser
@@ -96,6 +98,7 @@ docker run -d \
     --name jellyfin \
     --restart=unless-stopped \
     -u $(id -u):$(id -g) \
+    --label=com.centurylinklabs.watchtower.enable=true \
     -p 8096:8096 \
     -v ${HOME}/docker/jellyfin/config:/config \
     -v ${HOME}/docker/jellyfin/cache:/cache \
@@ -119,6 +122,7 @@ docker run -d \
     --name=duplicati \
     -u $(id -u):$(id -g) \
     -e TZ=Europe/Amsterdam \
+    --label=com.centurylinklabs.watchtower.enable=true \
     -p 8200:8200 \
     -v ${HOME}/docker/duplicati/config:/config \
     -v {BACKUP_LOCATION}:/backups \
@@ -142,6 +146,7 @@ docker run -d \
 docker run --privileged  -d \
     --name=qbittorrent \
     --restart unless-stopped \
+    --label=com.centurylinklabs.watchtower.enable=true \
     -v ${HOME}/docker/qbittorrent/config:/config \
     -v {DOWNLOAD_FOLDER}:/downloads \
     -e "VPN_ENABLED=yes" \
