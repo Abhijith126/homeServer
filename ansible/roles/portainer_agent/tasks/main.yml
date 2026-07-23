@@ -1,0 +1,15 @@
+---
+- name: Deploy the Portainer agent
+  community.docker.docker_container:
+    name: portainer_agent
+    image: "portainer/agent:{{ portainer_agent_version }}"
+    state: started
+    restart_policy: always
+    ports:
+      - "9001:9001"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/volumes:/var/lib/docker/volumes
+    labels:
+      homelab.managed: "true"
+  when: enable_portainer_agent | bool

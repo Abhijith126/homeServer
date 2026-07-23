@@ -1,0 +1,62 @@
+---
+# ─────────────────────────────────────────────────────────────
+# caddy — reverse proxy with automatic HTTPS
+# Node: infra   Category: proxy
+# Routes are a static Caddyfile with explicit per-node upstreams
+# (bridge networks can't span hosts, so we proxy to node hostnames).
+# ─────────────────────────────────────────────────────────────
+name: caddy
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-common: &common
+  restart: unless-stopped
+  logging: *logging
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  caddy:
+    <<: *common
+    image: caddy:2.11.4-alpine
+    container_name: caddy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"                    # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data                 # certificates — persistent
+      - caddy-config:/config
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:2019/config/ >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    labels:
+      homelab.managed: "true"
+      homelab.node: "infra"
+      homelab.stack: "caddy"
+      homelab.category: "proxy"
+      diun.enable: "true"
+    networks:
+      - default
+
+volumes:
+  caddy-data:
+  caddy-config:
+
+networks:
+  default:
+    name: caddy

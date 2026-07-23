@@ -1,0 +1,53 @@
+---
+# ─────────────────────────────────────────────────────────────
+# jellyfin — media server
+# Node: storage (ryzen)   Category: media
+# Uses host networking (DLNA/discovery), matching the current deployment.
+# ─────────────────────────────────────────────────────────────
+name: jellyfin
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-common: &common
+  restart: unless-stopped
+  logging: *logging
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  jellyfin:
+    <<: *common
+    image: jellyfin/jellyfin:10.11.11
+    container_name: jellyfin
+    user: "${PUID}:${PGID}"
+    network_mode: host
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - ${DOCKER_DATA}/jellyfin:/config
+      - jellyfin-cache:/cache
+      - ${MEDIA_ROOT}:/media
+    # devices:
+    #   - /dev/dri:/dev/dri          # uncomment for VAAPI hardware transcoding (Ryzen 2200G / Vega)
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8096/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      homelab.managed: "true"
+      homelab.node: "storage"
+      homelab.stack: "jellyfin"
+      homelab.category: "media"
+      diun.enable: "true"
+
+volumes:
+  jellyfin-cache:
