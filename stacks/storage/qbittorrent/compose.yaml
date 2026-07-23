@@ -1,0 +1,87 @@
+---
+# ─────────────────────────────────────────────────────────────
+# qbittorrent — torrent client routed through a gluetun VPN killswitch
+# Node: storage (ryzen)   Category: downloads
+# qBittorrent shares gluetun's network namespace, so ALL its traffic
+# exits via the VPN. If the VPN drops, qBittorrent loses connectivity.
+# ─────────────────────────────────────────────────────────────
+name: qbittorrent
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-common: &common
+  restart: unless-stopped
+  logging: *logging
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  gluetun:
+    <<: *common
+    image: qmcgaw/gluetun:v3.41
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # VPN provider settings (VPN_SERVICE_PROVIDER, VPN_TYPE, OPENVPN_* or
+      # WIREGUARD_*, SERVER_COUNTRIES) are passed from .env via env_file above,
+      # so this stack works with either OpenVPN or WireGuard providers unchanged.
+      FIREWALL_OUTBOUND_SUBNETS: ${LAN_NETWORK}
+      TZ: ${TZ}
+    ports:
+      - "${QBIT_PORT}:8080"          # qBittorrent WebUI (served via gluetun)
+      - "6881:6881"                  # torrent TCP
+      - "6881:6881/udp"              # torrent UDP
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- https://ipinfo.io/ip || exit 1"]
+      interval: 60s
+      timeout: 20s
+      retries: 3
+      start_period: 30s
+    labels:
+      homelab.managed: "true"
+      homelab.node: "storage"
+      homelab.stack: "qbittorrent"
+      homelab.category: "downloads"
+      diun.enable: "true"
+
+  qbittorrent:
+    <<: *common
+    image: lscr.io/linuxserver/qbittorrent:5.2.3_v2.0.13-ls469
+    container_name: qbittorrent
+    depends_on:
+      - gluetun
+    network_mode: "service:gluetun"    # route all traffic through the VPN
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PUID: ${PUID}
+      PGID: ${PGID}
+      TZ: ${TZ}
+      WEBUI_PORT: "8080"
+      TORRENTING_PORT: "6881"
+    volumes:
+      - ${DOCKER_DATA}/qbittorrent:/config
+      - ${MEDIA_ROOT}/Downloads:/downloads
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    labels:
+      homelab.managed: "true"
+      homelab.node: "storage"
+      homelab.stack: "qbittorrent"
+      homelab.category: "downloads"
+      diun.enable: "true"

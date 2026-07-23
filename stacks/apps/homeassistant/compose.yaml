@@ -1,0 +1,44 @@
+---
+# ─────────────────────────────────────────────────────────────
+# homeassistant — home automation
+# Node: apps   Category: home-automation
+# Requires host networking (device discovery) and runs privileged
+# (USB radios / Bluetooth), matching the current deployment. Because it
+# is privileged, the no-new-privileges hardening default does NOT apply.
+# ─────────────────────────────────────────────────────────────
+name: homeassistant
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:2026.7.3
+    container_name: homeassistant
+    restart: unless-stopped
+    logging: *logging
+    privileged: true
+    network_mode: host
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - ${DOCKER_DATA}/homeassistant:/config
+      - ${MEDIA_ROOT}/Files:/media
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8123/manifest.json || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    labels:
+      homelab.managed: "true"
+      homelab.node: "apps"
+      homelab.stack: "homeassistant"
+      homelab.category: "home-automation"
+      diun.enable: "true"

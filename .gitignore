@@ -1,0 +1,30 @@
+# ── Secrets & local environment — NEVER commit ──
+.env
+**/.env
+# ...but always keep the committed templates
+!.env.example
+!**/.env.example
+
+# ── Ansible ──
+*.retry
+ansible/vault-password*
+ansible/inventory.local*
+
+# ── Encryption keys / certs ──
+*.age
+*.key
+*.pem
+age.key
+
+# ── Runtime / data (should live outside the repo; guard anyway) ──
+data/
+**/data/
+*.log
+
+# ── OS / editor ──
+.DS_Store
+Thumbs.db
+*.swp
+*.bak
+.idea/
+.vscode/
