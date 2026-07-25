@@ -1,0 +1,67 @@
+---
+# ─────────────────────────────────────────────────────────────
+# pihole-unbound — network-wide ad-blocking DNS with a recursive
+# Unbound resolver (combined image, matching the current deployment).
+# Node: infra   Category: dns
+# ─────────────────────────────────────────────────────────────
+name: pihole-unbound
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-common: &common
+  restart: unless-stopped
+  logging: *logging
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  pihole:
+    <<: *common
+    image: cbcrowe/pihole-unbound:2024.03.2
+    container_name: pihole
+    hostname: pihole
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      TZ: ${TZ}
+      FTLCONF_LOCAL_IPV4: ${PIHOLE_HOST_IP}
+      WEBPASSWORD: ${PIHOLE_WEBPASSWORD}
+      PIHOLE_DNS_: 127.0.0.1#5335         # upstream = the bundled Unbound
+      DNSSEC: "true"
+      DNSMASQ_LISTENING: single
+      WEBTHEME: default-light
+      REV_SERVER: "true"
+      REV_SERVER_TARGET: ${ROUTER_IP}
+      REV_SERVER_DOMAIN: ${LOCAL_DOMAIN}
+      REV_SERVER_CIDR: ${LAN_CIDR}
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "${PIHOLE_WEB_PORT}:80/tcp"
+      # - "67:67/udp"                     # only if Pi-hole is your DHCP server
+    volumes:
+      - ${DOCKER_DATA}/pihole-unbound/etc-pihole:/etc/pihole
+      - ${DOCKER_DATA}/pihole-unbound/etc-dnsmasq:/etc/dnsmasq.d
+    healthcheck:
+      test: ["CMD-SHELL", "dig +norecurse +retry=0 @127.0.0.1 pi.hole || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      homelab.managed: "true"
+      homelab.node: "infra"
+      homelab.stack: "pihole-unbound"
+      homelab.category: "dns"
+      diun.enable: "true"
+    networks:
+      - default
+
+networks:
+  default:
+    name: pihole-unbound

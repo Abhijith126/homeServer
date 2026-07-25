@@ -1,0 +1,60 @@
+---
+# ─────────────────────────────────────────────────────────────
+# diun — Docker Image Update Notifier (replaces Watchtower)
+# Category: updates
+# Notify-only: emails when a newer image exists for a watched container,
+# but never auto-pulls — you bump pinned tags deliberately in git.
+# DEPLOY ON EVERY NODE to watch that node's containers (like a DaemonSet).
+# Watches only containers labelled `diun.enable=true`.
+# ─────────────────────────────────────────────────────────────
+name: diun
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-common: &common
+  restart: unless-stopped
+  logging: *logging
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  diun:
+    <<: *common
+    image: crazymax/diun:4.33.0
+    container_name: diun
+    command: serve
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      TZ: ${TZ}
+      LOG_LEVEL: info
+      DIUN_WATCH_SCHEDULE: "0 */6 * * *"
+      DIUN_WATCH_JITTER: 30s
+      DIUN_PROVIDERS_DOCKER: "true"
+      DIUN_PROVIDERS_DOCKER_WATCHBYDEFAULT: "false"
+      DIUN_NOTIF_MAIL_HOST: ${SMTP_HOST}
+      DIUN_NOTIF_MAIL_PORT: ${SMTP_PORT}
+      DIUN_NOTIF_MAIL_USERNAME: ${SMTP_USERNAME}
+      DIUN_NOTIF_MAIL_PASSWORD: ${SMTP_PASSWORD}
+      DIUN_NOTIF_MAIL_FROM: ${MAIL_FROM}
+      DIUN_NOTIF_MAIL_TO: ${MAIL_TO}
+    volumes:
+      - ${DOCKER_DATA}/diun:/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    # No healthcheck: diun is a scheduler with no HTTP endpoint.
+    labels:
+      homelab.managed: "true"
+      homelab.stack: "diun"
+      homelab.category: "updates"
+      diun.enable: "true"
+    networks:
+      - default
+
+networks:
+  default:
+    name: diun

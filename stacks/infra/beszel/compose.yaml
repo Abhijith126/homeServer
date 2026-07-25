@@ -1,0 +1,45 @@
+---
+# ─────────────────────────────────────────────────────────────
+# beszel — lightweight monitoring hub (dashboards + history + alerts)
+# Node: infra   Category: monitoring
+# Pairs with the beszel-agent stack deployed on every node.
+# ─────────────────────────────────────────────────────────────
+name: beszel
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-common: &common
+  restart: unless-stopped
+  logging: *logging
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  beszel:
+    <<: *common
+    image: henrygd/beszel:0.18.7
+    container_name: beszel
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ${DOCKER_DATA}/beszel:/beszel_data
+    ports:
+      - "${BESZEL_PORT}:8090"
+    # No healthcheck: the image is distroless (no shell/curl to run one).
+    labels:
+      homelab.managed: "true"
+      homelab.node: "infra"
+      homelab.stack: "beszel"
+      homelab.category: "monitoring"
+      diun.enable: "true"
+    networks:
+      - default
+
+networks:
+  default:
+    name: beszel

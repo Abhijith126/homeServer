@@ -1,0 +1,12 @@
+title = "homelab gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Ignore example env templates and documentation"
+paths = [
+  '''\.env\.example$''',
+  '''(^|/)docs/.*''',
+  '''(^|/)README\.md$''',
+]

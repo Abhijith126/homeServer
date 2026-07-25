@@ -1,0 +1,15 @@
+---
+# apps node — Debian 13. Media automation + dashboards + personal apps.
+docker_apt_release: bookworm       # Docker has no trixie suite yet
+tailscale_apt_release: bookworm
+
+ufw_allow_tcp:
+  - 8989     # sonarr
+  - 7878     # radarr
+  - 8686     # lidarr
+  - 6767     # bazarr
+  - 9696     # prowlarr
+  - 7575     # homarr
+  - 8123     # home assistant
+  - 3001     # uptime-kuma
+  - 3000     # portfolio

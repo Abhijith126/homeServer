@@ -1,0 +1,59 @@
+---
+# ─────────────────────────────────────────────────────────────
+# <app> — <one-line description>
+# Node: <node>   Category: <category>
+# Deploy: docker compose up -d   (identical via CLI / Ansible / Portainer)
+# ─────────────────────────────────────────────────────────────
+name: <app>
+
+# ── Vendored cross-cutting fragments (canonical: lib/compose/fragments.yaml) ──
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-healthcheck-defaults: &healthcheck-defaults
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 30s
+
+x-common: &common
+  restart: unless-stopped
+  logging: *logging
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  <app>:
+    <<: *common
+    image: <image>:<tag>  # pin a version — never :latest
+    container_name: <app>
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PUID: ${PUID}
+      PGID: ${PGID}
+      TZ: ${TZ}
+    volumes:
+      - ${DOCKER_DATA}/<app>:/config
+      # - ${NFS_MEDIA}:/media:ro          # example NFS mount — uncomment as needed
+    ports:
+      - "${<APP>_PORT}:80"                # host:container — set <APP>_PORT in .env
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -fsS http://localhost:80/ || exit 1"]
+    labels:
+      homelab.managed: "true"
+      homelab.node: "<node>"
+      homelab.stack: "<app>"
+      homelab.category: "<category>"
+      diun.enable: "true"
+    networks:
+      - default
+
+networks:
+  default:
+    name: <app>

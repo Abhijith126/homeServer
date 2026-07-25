@@ -1,0 +1,38 @@
+---
+- name: Add Tailscale GPG key
+  ansible.builtin.get_url:
+    url: "https://pkgs.tailscale.com/stable/{{ ansible_distribution | lower }}/{{ tailscale_apt_release }}.noarmor.gpg"
+    dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
+    mode: "0644"
+
+- name: Add Tailscale apt repository
+  ansible.builtin.get_url:
+    url: "https://pkgs.tailscale.com/stable/{{ ansible_distribution | lower }}/{{ tailscale_apt_release }}.tailscale-keyring.list"
+    dest: /etc/apt/sources.list.d/tailscale.list
+    mode: "0644"
+
+- name: Install Tailscale
+  ansible.builtin.apt:
+    name: tailscale
+    state: present
+    update_cache: true
+
+- name: Ensure tailscaled is started and enabled
+  ansible.builtin.service:
+    name: tailscaled
+    state: started
+    enabled: true
+
+- name: Check current Tailscale status
+  ansible.builtin.command: tailscale status
+  register: ts_status
+  changed_when: false
+  failed_when: false
+
+- name: Bring up Tailscale
+  ansible.builtin.command: "tailscale up --authkey={{ tailscale_authkey }} {{ tailscale_up_args }}"
+  when:
+    - tailscale_authkey | length > 0
+    - ts_status.rc != 0 or 'Logged out' in ts_status.stdout
+  changed_when: true
+  no_log: true    # keep the auth key out of logs

@@ -1,0 +1,55 @@
+---
+# ─────────────────────────────────────────────────────────────
+# bazarr — subtitle management for Sonarr/Radarr libraries
+# Node: apps   Category: arr
+# ─────────────────────────────────────────────────────────────
+name: bazarr
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-common: &common
+  restart: unless-stopped
+  logging: *logging
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  bazarr:
+    <<: *common
+    image: lscr.io/linuxserver/bazarr:v1.6.0-ls356
+    container_name: bazarr
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PUID: ${PUID}
+      PGID: ${PGID}
+      TZ: ${TZ}
+    volumes:
+      - ${DOCKER_DATA}/bazarr:/config
+      - ${MEDIA_ROOT}/Movies:/movies
+      - ${MEDIA_ROOT}/Shows:/tv
+    ports:
+      - "${BAZARR_PORT}:6767"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:6767 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      homelab.managed: "true"
+      homelab.node: "apps"
+      homelab.stack: "bazarr"
+      homelab.category: "arr"
+      diun.enable: "true"
+    networks:
+      - default
+
+networks:
+  default:
+    name: bazarr

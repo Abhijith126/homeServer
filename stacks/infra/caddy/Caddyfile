@@ -1,0 +1,91 @@
+# ─────────────────────────────────────────────────────────────
+# Homelab reverse-proxy routes.
+# Upstreams use node hostnames (ryzen / apps / infra) — resolvable via
+# Tailscale MagicDNS or /etc/hosts. Automatic HTTPS via Let's Encrypt;
+# for a Tailscale-only setup swap the ACME block for `tls internal` or a
+# DNS-01 challenge (see the commented example at the bottom).
+# ─────────────────────────────────────────────────────────────
+{
+	email {$ACME_EMAIL}
+}
+
+# ── storage node (ryzen) ──
+photos.{$DOMAIN} {
+	reverse_proxy ryzen:2283
+}
+
+jellyfin.{$DOMAIN} {
+	reverse_proxy ryzen:8096
+}
+
+files.{$DOMAIN} {
+	reverse_proxy ryzen:8082
+}
+
+qbit.{$DOMAIN} {
+	reverse_proxy ryzen:8080
+}
+
+backup.{$DOMAIN} {
+	reverse_proxy ryzen:8200
+}
+
+# ── apps node ──
+sonarr.{$DOMAIN} {
+	reverse_proxy apps:8989
+}
+
+radarr.{$DOMAIN} {
+	reverse_proxy apps:7878
+}
+
+lidarr.{$DOMAIN} {
+	reverse_proxy apps:8686
+}
+
+bazarr.{$DOMAIN} {
+	reverse_proxy apps:6767
+}
+
+prowlarr.{$DOMAIN} {
+	reverse_proxy apps:9696
+}
+
+homarr.{$DOMAIN} {
+	reverse_proxy apps:7575
+}
+
+home.{$DOMAIN} {
+	reverse_proxy apps:8123
+}
+
+status.{$DOMAIN} {
+	reverse_proxy apps:3001
+}
+
+portfolio.{$DOMAIN} {
+	reverse_proxy apps:3000
+}
+
+# ── infra node ──
+pihole.{$DOMAIN} {
+	redir / /admin
+	reverse_proxy infra:8081
+}
+
+beszel.{$DOMAIN} {
+	reverse_proxy infra:8090
+}
+
+# ── Tailscale-only / internal TLS alternative ──
+# Replace the per-site auto-HTTPS above with internal certs by adding
+# `tls internal` inside each site block, or use a DNS-01 challenge:
+#
+#   *.{$DOMAIN} {
+#       tls {
+#           dns cloudflare {$CLOUDFLARE_API_TOKEN}
+#       }
+#       @photos host photos.{$DOMAIN}
+#       handle @photos { reverse_proxy ryzen:2283 }
+#       ...
+#   }
