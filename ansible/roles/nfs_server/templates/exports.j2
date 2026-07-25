@@ -1,0 +1,4 @@
+# Managed by Ansible — do not edit by hand.
+{% for e in nfs_exports %}
+{{ e.path }} {{ e.clients }}({{ e.options }})
+{% endfor %}

@@ -1,0 +1,43 @@
+---
+# ═══════════════════════════════════════════════════════════════
+# Canonical cross-cutting compose fragments (single source of truth).
+#
+# YAML anchors do NOT cross files, so these x-* blocks are *vendored*
+# into every stack's compose.yaml by scripts/render-template.sh.
+# Edit here first, then re-render / keep stacks in sync.
+#
+# Usage inside a service:
+#   services:
+#     app:
+#       <<: *common
+#       healthcheck:
+#         <<: *healthcheck-defaults
+#         test: ["CMD-SHELL", "curl -fsS http://localhost:80/ || exit 1"]
+#       labels:
+#         <<: *labels
+#         homelab.node: apps
+#         homelab.stack: app
+#         homelab.category: tools
+# ═══════════════════════════════════════════════════════════════
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-healthcheck-defaults: &healthcheck-defaults
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 30s
+
+x-labels: &labels
+  homelab.managed: "true"
+  diun.enable: "true"
+
+x-common: &common
+  restart: unless-stopped
+  logging: *logging
+  security_opt:
+    - no-new-privileges:true

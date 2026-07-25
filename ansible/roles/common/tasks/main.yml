@@ -1,0 +1,105 @@
+---
+- name: Set timezone
+  community.general.timezone:
+    name: "{{ timezone }}"
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name:
+      - curl
+      - ca-certificates
+      - gnupg
+      - ufw
+      - unattended-upgrades
+      - rsync
+      - htop
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Ensure homelab data directory exists
+  ansible.builtin.file:
+    path: "{{ docker_data_root }}"
+    state: directory
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0755"
+
+- name: Enable unattended security upgrades
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    mode: "0644"
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+
+- name: Harden SSH — root login policy
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PermitRootLogin'
+    line: "PermitRootLogin {{ ssh_permit_root_login }}"
+    validate: "sshd -t -f %s"
+  notify: Restart ssh
+
+- name: Harden SSH — disable password authentication (opt-in)
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PasswordAuthentication'
+    line: "PasswordAuthentication no"
+    validate: "sshd -t -f %s"
+  when: ssh_disable_password_auth | bool
+  notify: Restart ssh
+
+- name: Disable systemd-resolved DNS stub listener (frees port 53 for Pi-hole)
+  ansible.builtin.lineinfile:
+    path: /etc/systemd/resolved.conf
+    regexp: '^#?DNSStubListener='
+    line: "DNSStubListener=no"
+  when: disable_resolved_stub | default(false) | bool
+  notify: Restart systemd-resolved
+
+# ── Firewall ──
+- name: UFW default policies
+  community.general.ufw:
+    direction: "{{ item.direction }}"
+    policy: "{{ item.policy }}"
+  loop:
+    - { direction: incoming, policy: deny }
+    - { direction: outgoing, policy: allow }
+  when: ufw_enabled | bool
+
+- name: UFW allow SSH
+  community.general.ufw:
+    rule: allow
+    name: OpenSSH
+  when: ufw_enabled | bool
+
+- name: UFW allow everything on the Tailscale interface
+  community.general.ufw:
+    rule: allow
+    direction: in
+    interface: tailscale0
+  when: ufw_enabled | bool
+
+- name: UFW allow LAN TCP service ports
+  community.general.ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+    from_ip: "{{ lan_cidr }}"
+  loop: "{{ ufw_allow_tcp | default([]) }}"
+  when: ufw_enabled | bool
+
+- name: UFW allow LAN UDP service ports
+  community.general.ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: udp
+    from_ip: "{{ lan_cidr }}"
+  loop: "{{ ufw_allow_udp | default([]) }}"
+  when: ufw_enabled | bool
+
+- name: Enable UFW
+  community.general.ufw:
+    state: enabled
+  when: ufw_enabled | bool

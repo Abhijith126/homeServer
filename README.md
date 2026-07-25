@@ -1,165 +1,81 @@
-# Home Server Setup
+# 🏠 Homelab
 
-Guide to set up a homeserver with various apps which will help you in the path of self hosting
+A reproducible, version-controlled **Docker-Compose homelab platform** — Infrastructure as Code for a three-node self-hosted setup. Every service is a self-contained stack that deploys identically from the CLI, from Ansible, or as a Portainer Git stack, and is structured to migrate cleanly to k3s + Helm later.
 
-## Hardware requirements
+## Nodes
 
-To start with a home server you don't need much of a budget. One can start of with a Raspberry Pi to start of. Most of your money is spent on storage compared to the server itself.
+| Node        | Hostname | Hardware                | Role         | Runs                                                                 |
+| ----------- | -------- | ----------------------- | ------------ | ------------------------------------------------------------------- |
+| **storage** | `ryzen`  | Ryzen 3 2200G · 16 GB · 2×4 TB RAID | Storage + media | Immich, Jellyfin, Postgres, Redis, qBittorrent, Duplicati, FileBrowser |
+| **apps**    | `apps`   | i7-5500U · 16 GB        | Applications | Home Assistant, Sonarr/Radarr/Lidarr/Bazarr/Prowlarr, Homarr, Uptime Kuma, portfolio |
+| **infra**   | `infra`  | Celeron 3865U · 8 GB    | Infrastructure | Pi-hole + Unbound, Caddy, Tailscale, Beszel monitoring, Portainer agent |
 
-### My current setup
+Storage lives on **ryzen** and is consumed by the other nodes over **NFS** — no irreplaceable data lives on the app/infra nodes.
 
-**HP Prodesk 600 G2 mini**
-This is a mini PC which has tons of USB 3 ports and is cheap (Cheaper than a Raspberry pi but faster).
-
-##### Specifications
-
-- i5-6500T
-- 16GB RAM
-- 256GB Boot SSD
-- 2X 1TB HDD (1 for storage and 1 for backups)
-
-## Software side of things
-
-You can install any operating system you feel comfortable with, I have decided to go with [Ubuntu Server](https://ubuntu.com/download/server). This is installed on the 256GB SSD and this makes things to boot up faster. If you are using a Pi then a PiOs Lite is better.
-
-Make sure to have SSH enabled, so that it is easier to remote into the server. It is also recommended to have a static IP assigned to the server so it doesn't mess things up at a later point in time.
-
-[Install docker](https://docs.docker.com/engine/install/) and make sure to the the user has sudo permissions.
-
-I would recommend creating a folder named docker under your home folder so that you can store and mount all container configurations.
-
-`mkdir ~/docker`
-
-#### Self hosted Apps
-
-1.  Portainer
-2.  File browser
-3.  Pi Hole with unbound
-4.  Immich
-5.  Duplicati
-6.  Jellyfin
-7.  qBitTorrent with OpenVPN
-8.  Home Assistant
-
-Lets start of with installing Portainer, with this you can run and manage all the containers from browser on your local network.
-If you like to run everything via docker-compose then take a look at the respective folders.
-
-### [Portainer](https://www.portainer.io/)
-
-1. Create a container folder `mkdir ~/docker/portainer`
-2. Create the container using the below docker run command
+## Repository layout
 
 ```
-docker run -d \
-    -p 9443:9443 \
-    --name portainer \
-    --restart always \
-    --label=com.centurylinklabs.watchtower.enable=true \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    -v ${HOME}/docker/portainer:/data \
-    portainer/portainer-ce:latest
+homelab/
+├── ansible/            # host provisioning: docker, nfs, tailscale, ufw, ssh, portainer-agent
+├── stacks/             # deployable apps, grouped by node
+│   ├── storage/        #   → ryzen
+│   ├── apps/           #   → apps
+│   ├── infra/          #   → infra
+│   └── _template/      # canonical stack skeleton (compose + env + readme + backup/restore)
+├── lib/compose/        # shared cross-cutting fragments (logging, healthcheck, labels)
+├── scripts/            # new-app scaffolder, validate (local CI), create-networks
+├── docs/               # architecture, networking, bootstrap, upgrade, disaster-recovery
+├── .github/workflows/  # CI: compose config + yamllint + shellcheck + gitleaks
+└── Makefile            # make validate | new-app | networks
 ```
 
-3. The application runs on HTTPS port 9443. https://{YOUR_SERVER_IP}:9443
+## Quick start
 
-### [File Browser](https://filebrowser.org/)
+```bash
+# 1. Provision a host (docker, nfs, tailscale, firewall, portainer-agent)
+cd ansible && ansible-galaxy collection install -r requirements.yml
+ansible-playbook site.yml --limit apps -e tailscale_authkey=tskey-...
 
-1. Create a container folder `mkdir ~/docker/filebrowser`
-2. Create empty database file `touch ~/docker/filebrowser/filebrowser.db`
-3. Create empty settings file `touch ~/docker/filebrowser/settings.json`
-4. Create the container using the below docker run command
+# 2. Configure once — set secrets in the root .env, then generate every stack's .env
+cd .. && cp .env.example .env && $EDITOR .env
+make config
 
-```
-# Here /mnt is the Storage location, I have my HDD's mounted to /mnt. Replace accordingly
-
-docker run -d --name fileBrowser \
-    -v /mnt:/srv \
-    -v ${HOME}/docker/filebrowser/filebrowser.db:/filebrowser.db \
-    --label=com.centurylinklabs.watchtower.enable=true \
-    -v ${HOME}/docker/filebrowser/settings.json:/.filebrowser.json \
-    -u $(id -u):$(id -g) \
-    -p 8082:80 \
-    filebrowser/filebrowser
+# 3. Deploy a stack
+cd stacks/apps/uptime-kuma && docker compose up -d
 ```
 
-5. The application runs on HTTP port 8082. http://{YOUR_SERVER_IP}:8082
+Scaffold a new service:
 
-### [Jellyfin](https://jellyfin.org/)
-
-1. Create a container folder `mkdir ~/docker/jellyfin`
-2. Create empty config directory `mkdir ~/docker/jellyfin/config`
-3. Create empty cache directory `mkdir ~/docker/jellyfin/cache`
-4. Create the container using the below docker run command
-
-```
-# Here {MEDIA LOCATION} is the Storage location, replace accordingly
-
-docker run -d \
-    --name jellyfin \
-    --restart=unless-stopped \
-    -u $(id -u):$(id -g) \
-    --label=com.centurylinklabs.watchtower.enable=true \
-    -p 8096:8096 \
-    -v ${HOME}/docker/jellyfin/config:/config \
-    -v ${HOME}/docker/jellyfin/cache:/cache \
-    -v {MEDIA LOCATION}:/media \
-    --device /dev/dri/renderD128:/dev/dri/renderD128 \ # Optional If you have GPU this need to be replaced
-    jellyfin/jellyfin
+```bash
+make new-app NODE=apps APP=sonarr CAT=arr
 ```
 
-5. The application runs on HTTP port 8096. http://{YOUR_SERVER_IP}:8096
+Validate everything locally (mirrors CI):
 
-### [Duplicati](https://www.duplicati.com/)
-
-1. Create a container folder `mkdir ~/docker/duplicati`
-2. Create a config folder `mkdir ~/docker/duplicati/config`
-3. Create the container using the below docker run command
-
-```
-# Here {BACKUP_LOCATION} and {SOURCE_LOCATION} are the Storage location, replace accordingly
-
-docker run -d \
-    --name=duplicati \
-    -u $(id -u):$(id -g) \
-    -e TZ=Europe/Amsterdam \
-    --label=com.centurylinklabs.watchtower.enable=true \
-    -p 8200:8200 \
-    -v ${HOME}/docker/duplicati/config:/config \
-    -v {BACKUP_LOCATION}:/backups \
-    -v {SOURCE_LOCATION}:/source \
-    --restart unless-stopped \
-    lscr.io/linuxserver/duplicati:latest
+```bash
+make validate
 ```
 
-4. The application runs on HTTP port 8200. http://{YOUR_SERVER_IP}:8200
+## Conventions
 
-### [qBitTorrent](https://github.com/MarkusMcNugen/docker-qBittorrentvpn) with OpenVpn
+Every stack follows one contract — naming, volumes, secrets, health checks, labels, backups. See **[docs/conventions.md](docs/conventions.md)**.
 
-1. Create a container folder `mkdir ~/docker/qbittorrent`
-2. Create a config folder `mkdir ~/docker/qbittorrent/config`
-3. Place all OpenVPN config files inside the `config/openvpn` folder
-4. Create the container using the below docker run command
+## Documentation
 
-```
-# Here {DOWNLOAD_FOLDER} is the Storage location, replace accordingly
+| Doc | Purpose |
+| --- | --- |
+| [architecture.md](docs/architecture.md) | System, media-flow & storage diagrams |
+| [networking.md](docs/networking.md) | Networks, ports, reverse-proxy routes, DNS, firewall |
+| [hardware.md](docs/hardware.md) | Nodes, specs, storage layout |
+| [bootstrap.md](docs/bootstrap.md) | Provision a host & deploy stacks |
+| [upgrade.md](docs/upgrade.md) | Update workflow & rollback |
+| [disaster-recovery.md](docs/disaster-recovery.md) | Backups & rebuild-from-zero runbook |
+| [conventions.md](docs/conventions.md) | The platform contract every stack follows |
 
-docker run --privileged  -d \
-    --name=qbittorrent \
-    --restart unless-stopped \
-    --label=com.centurylinklabs.watchtower.enable=true \
-    -v ${HOME}/docker/qbittorrent/config:/config \
-    -v {DOWNLOAD_FOLDER}:/downloads \
-    -e "VPN_ENABLED=yes" \
-    -e "VPN_USERNAME=VPN_USERNAME" \
-    -e "VPN_PASSWORD=VPN_PASSWORD" \
-    -e "LAN_NETWORK=192.168.1.0/24" \
-    -e "NAME_SERVERS=8.8.8.8,8.8.4.4" \
-    -p 8083:8080 \
-    -p 8999:8999 \
-    -p 8999:8999/udp \
-    markusmcnugen/qbittorrentvpn
-```
+## Design principles
 
-5. The application runs on HTTP port 8083. http://{YOUR_SERVER_IP}:8083
-
-**NOTE:** If you get `Unauthorised` when you visit then navigate to `${HOME}/docker/qbittorrent/config/qBittorrent/config` and then edit the `qBittorrent.conf` file. Add `WebUI\HostHeaderValidation=false` to the end/along with other `WebUI\*` lines.
+- **Portainer-optional** — the repo + plain `docker compose` is the source of truth; Portainer BE is a convenience layer, never a dependency.
+- **Self-contained stacks** — one folder = one deployable unit = one future Helm chart.
+- **No secrets in git** — `.env` is gitignored; only `.env.example` templates are committed.
+- **No hardcoded paths** — everything flows through `.env`.
+- **k3s-ready** — stack→chart, `.env`→ConfigMap/Secret, NFS→PVC, labels→k8s labels.

@@ -1,0 +1,29 @@
+---
+# One-command host bootstrap.
+#   ansible-galaxy collection install -r requirements.yml
+#   ansible-playbook site.yml                       # all nodes
+#   ansible-playbook site.yml --limit apps          # one node
+#   ansible-playbook site.yml --check --diff        # dry run
+# Provide the Tailscale auth key at run time (never commit it):
+#   ansible-playbook site.yml -e tailscale_authkey=tskey-auth-xxxx
+
+- name: Base + Docker + Tailscale (all nodes)
+  hosts: all
+  become: true
+  roles:
+    - common
+    - docker
+    - tailscale
+
+- name: NFS server (storage node)
+  hosts: storage_nodes
+  become: true
+  roles:
+    - nfs_server
+
+- name: NFS clients + Portainer agent (apps & infra)
+  hosts: app_nodes:infra_nodes
+  become: true
+  roles:
+    - nfs_client
+    - portainer_agent

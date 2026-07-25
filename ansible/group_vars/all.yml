@@ -1,0 +1,47 @@
+---
+# ── Identity ──
+homelab_user: pjh10
+homelab_uid: 1000
+homelab_gid: 1000
+timezone: Europe/Amsterdam
+docker_data_root: /opt/homelab/data
+
+# ── SSH hardening ──
+# Only set ssh_disable_password_auth=true AFTER confirming key-based login works,
+# or you will lock yourself out.
+ssh_permit_root_login: "prohibit-password"
+ssh_disable_password_auth: false
+
+# ── Firewall ──
+ufw_enabled: true
+lan_cidr: "192.168.0.0/16"
+
+# ── Docker ──
+# Debian 13 (trixie) has no Docker apt suite yet — override to "bookworm" for
+# Debian nodes (set in group_vars/apps.yml + infra.yml).
+docker_apt_release: "{{ ansible_distribution_release }}"
+
+# ── Tailscale ──
+# Pass the auth key at run time: -e tailscale_authkey=tskey-...  (never commit it)
+tailscale_authkey: ""
+tailscale_up_args: "--ssh"
+tailscale_apt_release: "{{ ansible_distribution_release }}"
+
+# ── Portainer agent (apps & infra only; ryzen runs the BE server) ──
+enable_portainer_agent: true
+portainer_agent_version: "2.21.5"   # match your Portainer BE server version
+
+# ── NFS ──
+nfs_server_host: ryzen              # use the LAN IP for best performance
+nfs_exports:
+  - path: /mnt/nas
+    clients: "{{ lan_cidr }}"
+    options: "rw,sync,no_subtree_check,no_root_squash"
+  - path: /mnt/hdd2
+    clients: "{{ lan_cidr }}"
+    options: "rw,sync,no_subtree_check,no_root_squash"
+nfs_mounts:
+  - src: "{{ nfs_server_host }}:/mnt/nas"
+    path: /mnt/nas
+  - src: "{{ nfs_server_host }}:/mnt/hdd2"
+    path: /mnt/nfs/backup

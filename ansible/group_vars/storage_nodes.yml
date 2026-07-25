@@ -1,0 +1,17 @@
+---
+# ryzen — storage node. Runs the NFS server + storage stacks.
+# Firewall: NFS (2049/111) + service web UIs, from the LAN.
+ufw_allow_tcp:
+  - 111      # rpcbind (NFS)
+  - 2049     # NFS
+  - 2283     # immich
+  - 8096     # jellyfin
+  - 8082     # filebrowser
+  - 8080     # qbittorrent (gluetun)
+  - 8200     # duplicati
+ufw_allow_udp:
+  - 111
+  - 2049
+
+# ryzen currently runs Portainer BE (server) via snap docker — no agent here.
+enable_portainer_agent: false

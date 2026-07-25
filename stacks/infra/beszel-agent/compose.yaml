@@ -1,0 +1,41 @@
+---
+# ─────────────────────────────────────────────────────────────
+# beszel-agent — metrics agent for the Beszel hub
+# Category: monitoring
+# DEPLOY ON EVERY NODE (storage, apps, infra) — like a k8s DaemonSet.
+# Uses host networking so it reports the host's real metrics.
+# ─────────────────────────────────────────────────────────────
+name: beszel-agent
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-common: &common
+  restart: unless-stopped
+  logging: *logging
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  beszel-agent:
+    <<: *common
+    image: henrygd/beszel-agent:0.18.7
+    container_name: beszel-agent
+    network_mode: host
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      LISTEN: ${BESZEL_AGENT_PORT}
+      KEY: ${BESZEL_AGENT_KEY}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    # No healthcheck: the image is distroless (no shell/curl to run one).
+    labels:
+      homelab.managed: "true"
+      homelab.stack: "beszel-agent"
+      homelab.category: "monitoring"
+      diun.enable: "true"
