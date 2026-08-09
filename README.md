@@ -4,11 +4,11 @@ A reproducible, version-controlled **Docker-Compose homelab platform** — Infra
 
 ## Nodes
 
-| Node        | Hostname | Hardware                | Role         | Runs                                                                 |
-| ----------- | -------- | ----------------------- | ------------ | ------------------------------------------------------------------- |
-| **storage** | `ryzen`  | Ryzen 3 2200G · 16 GB · 2×4 TB RAID | Storage + media | Immich, Jellyfin, Postgres, Redis, qBittorrent, Duplicati, FileBrowser |
-| **apps**    | `apps`   | i7-5500U · 16 GB        | Applications | Home Assistant, Sonarr/Radarr/Lidarr/Bazarr/Prowlarr, Homarr, Uptime Kuma, portfolio |
-| **infra**   | `infra`  | Celeron 3865U · 8 GB    | Infrastructure | Pi-hole + Unbound, Caddy, Tailscale, Beszel monitoring, Portainer agent |
+| Node        | Hostname | Role         | Runs                                                                 |
+| ----------- | -------- | ------------ | ------------------------------------------------------------------- |
+| **storage** | `storage`  | Storage + media | Immich, Jellyfin, Postgres, Redis, qBittorrent, Duplicati, FileBrowser |
+| **apps**    | `apps`   | Applications | Home Assistant, Sonarr/Radarr/Lidarr/Bazarr/Prowlarr, Homarr, Uptime Kuma, portfolio |
+| **infra**   | `infra`  | Infrastructure | Pi-hole + Unbound, Caddy, Tailscale, Beszel monitoring, Portainer agent |
 
 Storage lives on **ryzen** and is consumed by the other nodes over **NFS** — no irreplaceable data lives on the app/infra nodes.
 
