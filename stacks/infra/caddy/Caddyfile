@@ -7,6 +7,9 @@
 # ─────────────────────────────────────────────────────────────
 {
 	email {$ACME_EMAIL}
+	# DNS-01 challenge via Cloudflare for ALL sites (real certs, no public exposure).
+	# Token comes from cloudflare.env on the infra node (see cloudflare.env.example).
+	acme_dns cloudflare {$CLOUDFLARE_API_TOKEN}
 }
 
 # ── storage node (ryzen) ──
