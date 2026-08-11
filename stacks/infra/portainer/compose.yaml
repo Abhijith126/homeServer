@@ -1,0 +1,49 @@
+---
+# ─────────────────────────────────────────────────────────────
+# portainer — Portainer BE management server (web UI + API)
+# Node: infra   Category: management
+# Manages this host's Docker via the local socket, and the remote
+# nodes (apps, ryzen) through the portainer/agent deployed there by
+# the Ansible portainer_agent role. Portainer is a convenience layer —
+# the repo + `docker compose` remains the source of truth.
+# ─────────────────────────────────────────────────────────────
+name: portainer
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-common: &common
+  restart: unless-stopped
+  logging: *logging
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  portainer:
+    <<: *common
+    image: portainer/portainer-ee:2.21.5   # match the agent version in ansible group_vars
+    container_name: portainer
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${DOCKER_DATA}/portainer:/data
+    ports:
+      - "${PORTAINER_PORT}:9443"   # HTTPS UI (self-signed; Caddy proxies with tls_insecure_skip_verify)
+    # No healthcheck: the image is minimal (no shell/curl to run one).
+    labels:
+      homelab.managed: "true"
+      homelab.node: "infra"
+      homelab.stack: "portainer"
+      homelab.category: "management"
+      diun.enable: "true"
+    networks:
+      - default
+
+networks:
+  default:
+    name: portainer

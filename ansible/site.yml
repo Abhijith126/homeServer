@@ -21,9 +21,17 @@
   roles:
     - nfs_server
 
-- name: NFS clients + Portainer agent (apps & infra)
+- name: NFS clients (apps & infra)
   hosts: app_nodes:infra_nodes
   become: true
   roles:
     - nfs_client
+
+# Portainer agent runs on the nodes managed remotely by the BE server (apps &
+# storage). infra runs the BE server itself (stacks/infra/portainer) and manages
+# its own Docker over the local socket, so it sets enable_portainer_agent=false.
+- name: Portainer agent (managed nodes)
+  hosts: all
+  become: true
+  roles:
     - portainer_agent

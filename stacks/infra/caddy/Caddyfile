@@ -77,6 +77,15 @@ beszel.{$DOMAIN} {
 	reverse_proxy infra:8090
 }
 
+portainer.{$DOMAIN} {
+	# Portainer serves HTTPS with a self-signed cert on 9443.
+	reverse_proxy https://infra:9443 {
+		transport http {
+			tls_insecure_skip_verify
+		}
+	}
+}
+
 # ── Tailscale-only / internal TLS alternative ──
 # Replace the per-site auto-HTTPS above with internal certs by adding
 # `tls internal` inside each site block, or use a DNS-01 challenge:

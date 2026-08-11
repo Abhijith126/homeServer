@@ -27,12 +27,15 @@ tailscale_authkey: ""
 tailscale_up_args: "--ssh"
 tailscale_apt_release: "{{ ansible_distribution_release }}"
 
-# ── Portainer agent (apps & infra only; ryzen runs the BE server) ──
+# ── Portainer agent (apps & storage; infra runs the BE server) ──
+# infra overrides this to false in group_vars/infra_nodes.yml.
 enable_portainer_agent: true
-portainer_agent_version: "2.21.5"   # match your Portainer BE server version
+portainer_agent_version: "2.21.5"   # match the Portainer BE server (stacks/infra/portainer)
 
 # ── NFS ──
-nfs_server_host: ryzen              # use the LAN IP for best performance
+# Use ryzen's LAN IP, not the hostname: NFS runs over the LAN, and ryzen isn't
+# on Tailscale/MagicDNS until it's migrated last, so 'ryzen' won't resolve yet.
+nfs_server_host: 192.168.1.120
 nfs_exports:
   - path: /mnt/nas
     clients: "{{ lan_cidr }}"

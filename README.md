@@ -6,9 +6,9 @@ A reproducible, version-controlled **Docker-Compose homelab platform** — Infra
 
 | Node        | Hostname | Role         | Runs                                                                 |
 | ----------- | -------- | ------------ | ------------------------------------------------------------------- |
-| **storage** | `storage`  | Storage + media | Immich, Jellyfin, Postgres, Redis, qBittorrent, Duplicati, FileBrowser |
-| **apps**    | `apps`   | Applications | Home Assistant, Sonarr/Radarr/Lidarr/Bazarr/Prowlarr, Homarr, Uptime Kuma, portfolio |
-| **infra**   | `infra`  | Infrastructure | Pi-hole + Unbound, Caddy, Tailscale, Beszel monitoring, Portainer agent |
+| **storage** | `ryzen`  | Storage + media | Immich, Jellyfin, Postgres, Redis, qBittorrent, Duplicati, FileBrowser, Portainer agent |
+| **apps**    | `apps`   | Applications | Home Assistant, Sonarr/Radarr/Lidarr/Bazarr/Prowlarr, Homarr, Uptime Kuma, portfolio, Portainer agent |
+| **infra**   | `infra`  | Infrastructure | Pi-hole + Unbound, Caddy, Tailscale, Beszel monitoring, **Portainer BE server** |
 
 Storage lives on **ryzen** and is consumed by the other nodes over **NFS** — no irreplaceable data lives on the app/infra nodes.
 

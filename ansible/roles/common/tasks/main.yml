@@ -50,12 +50,22 @@
   when: ssh_disable_password_auth | bool
   notify: Restart ssh
 
+- name: Check for a systemd-resolved config file
+  ansible.builtin.stat:
+    path: /etc/systemd/resolved.conf
+  register: resolved_conf
+
+# Only relevant where systemd-resolved actually manages DNS (e.g. Ubuntu on
+# ryzen). Debian 13 doesn't ship it by default, so the file is absent and we
+# skip — port 53 is already free for Pi-hole there.
 - name: Disable systemd-resolved DNS stub listener (frees port 53 for Pi-hole)
   ansible.builtin.lineinfile:
     path: /etc/systemd/resolved.conf
     regexp: '^#?DNSStubListener='
     line: "DNSStubListener=no"
-  when: disable_resolved_stub | default(false) | bool
+  when:
+    - disable_resolved_stub | default(false) | bool
+    - resolved_conf.stat.exists
   notify: Restart systemd-resolved
 
 # ── Firewall ──

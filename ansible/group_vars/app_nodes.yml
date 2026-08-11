@@ -1,7 +1,10 @@
 ---
 # apps node — Debian 13. Media automation + dashboards + personal apps.
-docker_apt_release: bookworm       # Docker has no trixie suite yet
-tailscale_apt_release: bookworm
+docker_apt_release: trixie         # nodes already run docker-ce from the trixie suite
+tailscale_apt_release: bookworm    # Tailscale has no trixie suite yet; bookworm pkgs work on Debian 13
+
+# This node's login/owner user is 'server' (uid/gid 1000), not ryzen's 'pjh10'.
+homelab_user: server
 
 ufw_allow_tcp:
   - 8989     # sonarr
@@ -13,3 +16,4 @@ ufw_allow_tcp:
   - 8123     # home assistant
   - 3001     # uptime-kuma
   - 3000     # portfolio
+  - 9001     # portainer agent (managed by the BE server on infra)
