@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help validate new-app networks fmt
+.PHONY: help validate new-app networks fmt deploy
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -20,6 +20,9 @@ config: ## Generate every stack's .env from the root .env
 
 config-check: ## Verify all stack .env files exist with no unset secrets
 	@./scripts/gen-env.sh --check
+
+deploy: ## Deploy all stacks for a node: make deploy NODE=infra [SKIP="diun caddy"]
+	@./scripts/deploy-node.sh $(NODE) $(if $(SKIP),--skip "$(SKIP)")
 
 fmt: ## Format shell scripts (shfmt -i 4)
 	@shfmt -i 4 -w $$(find scripts stacks -name '*.sh')

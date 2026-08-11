@@ -22,10 +22,17 @@ x-common: &common
 services:
   caddy:
     <<: *common
-    image: caddy:2.11.4-alpine
+    image: caddy-cloudflare:2.11.4        # built locally with the Cloudflare DNS plugin (see Dockerfile)
+    build:
+      context: .
+      args:
+        CADDY_VERSION: "2.11.4"
     container_name: caddy
     env_file:
       - path: .env
+        required: false
+      # Infra-only Cloudflare token for DNS-01 (not managed by gen-env; see cloudflare.env.example)
+      - path: cloudflare.env
         required: false
     environment:
       DOMAIN: ${DOMAIN}
