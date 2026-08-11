@@ -1,10 +1,17 @@
 ---
 # infra node — Debian 13. DNS, reverse proxy, monitoring.
-docker_apt_release: bookworm       # Docker has no trixie suite yet
-tailscale_apt_release: bookworm
+docker_apt_release: trixie         # nodes already run docker-ce from the trixie suite
+tailscale_apt_release: bookworm    # Tailscale has no trixie suite yet; bookworm pkgs work on Debian 13
+
+# This node's login/owner user is 'server' (uid/gid 1000), not ryzen's 'pjh10'.
+homelab_user: server
 
 # Free port 53 for Pi-hole (systemd-resolved binds it by default).
 disable_resolved_stub: true
+
+# infra hosts the Portainer BE *server* (stacks/infra/portainer), which manages
+# the local Docker over its socket — so it does not run the agent.
+enable_portainer_agent: false
 
 ufw_allow_tcp:
   - 53       # DNS
@@ -12,5 +19,6 @@ ufw_allow_tcp:
   - 443      # caddy (HTTPS)
   - 8081     # pihole web
   - 8090     # beszel
+  - 9443     # portainer BE web UI
 ufw_allow_udp:
   - 53       # DNS

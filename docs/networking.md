@@ -38,6 +38,7 @@ Cross-node traffic uses **published ports over the Tailscale/LAN interface** —
 | `portfolio.${DOMAIN}` | `apps:3000` | Portfolio |
 | `pihole.${DOMAIN}` | `infra:8081` | Pi-hole admin |
 | `beszel.${DOMAIN}` | `infra:8090` | Beszel |
+| `portainer.${DOMAIN}` | `infra:9443` | Portainer BE (management) |
 
 Routes live in [`stacks/infra/caddy/Caddyfile`](../stacks/infra/caddy/Caddyfile).
 
@@ -45,9 +46,9 @@ Routes live in [`stacks/infra/caddy/Caddyfile`](../stacks/infra/caddy/Caddyfile)
 
 | Node | TCP | UDP | Notes |
 | --- | --- | --- | --- |
-| **storage** | 111, 2049 (NFS); 2283, 8096, 8082, 8080, 8200 | 111, 2049 | Jellyfin uses host networking; qBittorrent 6881 = torrent |
-| **apps** | 8989, 7878, 8686, 6767, 9696, 7575, 8123, 3001, 3000 | — | Home Assistant uses host networking |
-| **infra** | 53, 80, 443, 8081, 8090 | 53 | 53 = DNS; 80/443 = Caddy |
+| **storage** | 111, 2049 (NFS); 2283, 8096, 8082, 8080, 8200; 9001 | 111, 2049 | Jellyfin uses host networking; qBittorrent 6881 = torrent; 9001 = Portainer agent |
+| **apps** | 8989, 7878, 8686, 6767, 9696, 7575, 8123, 3001, 3000; 9001 | — | Home Assistant uses host networking; 9001 = Portainer agent |
+| **infra** | 53, 80, 443, 8081, 8090, 9443 | 53 | 53 = DNS; 80/443 = Caddy; 9443 = Portainer BE server |
 
 The Ansible `common` role opens exactly these on the LAN (plus SSH) and allows everything on `tailscale0`. See [../ansible/group_vars/](../ansible/).
 
