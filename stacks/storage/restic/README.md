@@ -6,8 +6,9 @@ Scheduled, encrypted, deduplicated backups via the [resticker](https://github.co
 | --- | --- | --- | --- |
 | `restic` | `/opt/homelab/data` (all app state; excludes live Immich Postgres) | `homelab` | Wed + Sun 02:00 |
 | `restic-media` | `/mnt/nas/{Gallery,Files,Drive}` (photos + documents) | `media` | Wed + Sun 04:00 |
+| `restic-check` | runs `restic check` (integrity) | — | Sun 06:00 |
 
-`CHECK_CRON` runs `restic check` weekly (Sun 06:00). **Retention: `--keep-within 1m`** — every snapshot from the last month is kept (prunes older), so you can restore to any of the ~8 twice-weekly backups in the past month.
+`restic-check` is a separate container because resticker forbids `BACKUP_CRON` and `CHECK_CRON` on the same one. **Retention: `--keep-within 1m`** — every snapshot from the last month is kept (prunes older), so you can restore to any of the ~8 twice-weekly backups in the past month.
 
 > **Immich database:** enable Immich's built-in database backup (Admin → Settings → Backup). It dumps to `Gallery/backups/`, which the `media` job captures — no separate `pg_dumpall` needed. The live `immich/postgres` dir is excluded from the app-data job on purpose.
 
