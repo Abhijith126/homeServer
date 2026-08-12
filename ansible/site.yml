@@ -27,6 +27,14 @@
   roles:
     - nfs_client
 
+# Nightly restic backup of /opt/homelab/data to the shared repo on hdd2.
+# Runs after NFS so the backup mount exists on the clients.
+- name: Backups (restic) — all nodes
+  hosts: all
+  become: true
+  roles:
+    - restic
+
 # Portainer agent runs on the nodes managed remotely by the BE server (apps &
 # storage). infra runs the BE server itself (stacks/infra/portainer) and manages
 # its own Docker over the local socket, so it sets enable_portainer_agent=false.

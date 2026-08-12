@@ -26,7 +26,6 @@ Cross-node traffic uses **published ports over the Tailscale/LAN interface** —
 | `jellyfin.${DOMAIN}` | `ryzen:8096` | Jellyfin |
 | `files.${DOMAIN}` | `ryzen:8082` | FileBrowser |
 | `qbit.${DOMAIN}` | `ryzen:8080` | qBittorrent |
-| `backup.${DOMAIN}` | `ryzen:8200` | Duplicati |
 | `sonarr.${DOMAIN}` | `apps:8989` | Sonarr |
 | `radarr.${DOMAIN}` | `apps:7878` | Radarr |
 | `lidarr.${DOMAIN}` | `apps:8686` | Lidarr |
@@ -46,7 +45,7 @@ Routes live in [`stacks/infra/caddy/Caddyfile`](../stacks/infra/caddy/Caddyfile)
 
 | Node | TCP | UDP | Notes |
 | --- | --- | --- | --- |
-| **storage** | 111, 2049 (NFS); 2283, 8096, 8082, 8080, 8200; 9001 | 111, 2049 | Jellyfin uses host networking; qBittorrent 6881 = torrent; 9001 = Portainer agent |
+| **storage** | 111, 2049 (NFS); 2283, 8096, 8082, 8080; 9001, 45876 | 111, 2049 | Jellyfin uses host networking; qBittorrent 6881 = torrent; 9001 = Portainer agent; 45876 = Beszel agent |
 | **apps** | 8989, 7878, 8686, 6767, 9696, 7575, 8123, 3001, 3000; 9001 | — | Home Assistant uses host networking; 9001 = Portainer agent |
 | **infra** | 53, 80, 443, 8081, 8090, 9443 | 53 | 53 = DNS; 80/443 = Caddy; 9443 = Portainer BE server |
 

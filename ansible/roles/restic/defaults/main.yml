@@ -1,0 +1,10 @@
+---
+# Where the repo is checked out on the node (the backup script lives here and
+# reads its config from this dir's .env).
+homelab_repo_dir: "/home/{{ homelab_user }}/homeServer"
+
+# Nightly run. RandomizedDelaySec staggers the nodes so they don't grab the
+# shared repo lock at the same instant.
+restic_enabled: true
+restic_oncalendar: "*-*-* 02:00:00"
+restic_randomized_delay: "30min"

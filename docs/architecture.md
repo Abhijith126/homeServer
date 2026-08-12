@@ -29,7 +29,6 @@ flowchart TB
         immich["Immich"]
         jelly["Jellyfin"]
         qbit["qBittorrent + gluetun"]
-        dup["Duplicati"]
         fb["FileBrowser"]
         nas[("/mnt/nas  (RAID)<br/>/mnt/hdd2 (backups)")]
     end
@@ -71,9 +70,9 @@ Downloads and libraries share one volume (`/mnt/nas`) so imports are hardlinks, 
 
 ## Storage & data flow
 
-- **Config** (small, precious) → bind mount `${DOCKER_DATA}/<app>` (`/opt/homelab/data`) on each node, captured by per-stack `backup.sh`.
+- **Config** (small, precious) → bind mount `${DOCKER_DATA}/<app>` (`/opt/homelab/data`) on each node, captured by restic (`scripts/backup.sh`).
 - **Media / bulk** → `/mnt/nas` (RAID on ryzen), served to other nodes via NFS.
-- **Backups** → `/mnt/hdd2` on ryzen; Duplicati versions it off-site.
+- **Backups** → restic repo on `/mnt/hdd2` (encrypted, deduplicated, versioned; nightly per-node).
 
 ## Deployment model
 

@@ -8,8 +8,8 @@ ufw_allow_tcp:
   - 8096     # jellyfin
   - 8082     # filebrowser
   - 8080     # qbittorrent (gluetun)
-  - 8200     # duplicati
   - 9001     # portainer agent (managed by the BE server on infra)
+  - 45876    # beszel-agent (scraped by the hub on infra)
 ufw_allow_udp:
   - 111
   - 2049

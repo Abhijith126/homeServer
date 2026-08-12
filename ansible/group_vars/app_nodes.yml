@@ -17,3 +17,4 @@ ufw_allow_tcp:
   - 3001     # uptime-kuma
   - 3000     # portfolio
   - 9001     # portainer agent (managed by the BE server on infra)
+  - 45876    # beszel-agent (scraped by the hub on infra)

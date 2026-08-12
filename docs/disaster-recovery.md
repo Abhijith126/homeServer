@@ -6,10 +6,9 @@ How to recover from a lost container, a dead node, or a total rebuild.
 
 | Data | Location | Protected by |
 | --- | --- | --- |
-| App configs | `/opt/homelab/data/<app>` | per-stack `backup.sh` → `${NFS_BACKUP}` |
-| Immich database | Postgres (on ryzen) | `stacks/storage/immich/backup.sh` (`pg_dumpall`) |
-| Backup archives | `/mnt/hdd2` (ryzen) | Duplicati → off-site/versioned |
-| Media & photos | `/mnt/nas` (RAID) | RAID mirror + Duplicati |
+| App configs & state | `/opt/homelab/data` | **restic** (`scripts/backup.sh`) → repo on `/mnt/hdd2/restic` — encrypted, deduplicated, versioned, per-host snapshots |
+| Immich database | Postgres (on ryzen) | `pg_dumpall` dumped to `immich/db-dump/` and captured inside the restic snapshot |
+| Media & photos | `/mnt/nas` (RAID) | RAID mirror (add an off-site copy for the photo library — restic covers app state, not `/mnt/nas`) |
 | Infrastructure as code | this git repo | git remote |
 
 **Test restores periodically** — an untested backup is a hope, not a plan.
@@ -25,7 +24,7 @@ docker compose up -d
 
 ## Scenario 2 — A disk in the RAID fails
 
-Replace the disk and let the array rebuild (mdadm/ZFS). Media stays available during rebuild. If the whole array is lost, recover media from Duplicati into a fresh `/mnt/nas`.
+Replace the disk and let the array rebuild (mdadm/ZFS). Media stays available during rebuild. If the whole array is lost, media must be restored from an off-site copy — the restic repo covers app state under `/opt/homelab/data`, not the media library on `/mnt/nas`.
 
 ## Scenario 3 — Rebuild a node from zero
 
@@ -47,15 +46,15 @@ flowchart TB
    ansible-playbook site.yml --limit <node> -e tailscale_authkey=tskey-...
    ```
    (Rebuild **ryzen first** so NFS is up before apps/infra mount it.)
-3. **Restore configs.** For each stack on the node:
+3. **Restore app state.** Pull everything under `/opt/homelab/data` back from restic in one shot:
    ```bash
-   cd stacks/<node>/<app>
-   cp .env.example .env && $EDITOR .env     # restore secrets
-   ./restore.sh                             # pulls newest config archive from ${NFS_BACKUP}
+   cd ~/homeServer
+   cp .env.example .env && $EDITOR .env     # restore secrets, incl. RESTIC_PASSWORD + RESTIC_REPOSITORY
+   make config                              # regenerate per-stack .env files
+   make restore SNAP=latest                 # restores /opt/homelab/data from the repo
    ```
-   If `${NFS_BACKUP}` itself is gone, restore it from Duplicati first.
 4. **Restore databases.**
-   - **Immich:** `cd stacks/storage/immich && ./restore.sh` (recreates the DB volume and loads the newest `pg_dumpall`). The photo library on `/mnt/nas/Gallery` is untouched.
+   - **Immich:** the SQL dump comes back under `immich/db-dump/`. Bring Immich up, then `cd stacks/storage/immich && ./restore.sh` loads the newest `pg_dumpall`. The photo library on `/mnt/nas/Gallery` is RAID-protected and untouched.
 5. **Deploy.** `docker compose up -d` in each stack (or re-add the Portainer Git stacks).
 6. **Re-point the network.**
    - Router DHCP DNS → infra node IP (Pi-hole).
@@ -66,7 +65,7 @@ flowchart TB
 
 1. Clone this repo.
 2. Rebuild **ryzen** (Scenario 3) — it holds the data and NFS exports.
-3. Restore `/mnt/nas` (media) and `/mnt/hdd2` (backups) from Duplicati / off-site.
+3. Restore `/mnt/nas` (media) from your off-site copy; `/mnt/hdd2` holds the restic repo used to restore app state.
 4. Rebuild **apps** and **infra**.
 5. Restore each stack's config + databases, deploy, re-point DNS.
 
@@ -79,13 +78,13 @@ flowchart TB
 - [ ] DNS resolves + ad-blocking active (Pi-hole query log)
 - [ ] Caddy serves each `app.${DOMAIN}` over HTTPS
 - [ ] Beszel shows all nodes reporting
-- [ ] A fresh `./backup.sh` succeeds on a couple of stacks
+- [ ] A fresh `make backup CHECK=1` succeeds and `restic check` passes
 
 ## Keep off-box
 
 Store these somewhere **not** on the homelab (password manager / encrypted vault):
 
 - Each stack's `.env` (or at least the secrets)
-- Duplicati passphrase + `DUPLICATI_SETTINGS_ENCRYPTION_KEY`
+- restic `RESTIC_PASSWORD` (without it the backups are unrecoverable)
 - Immich `DB_PASSWORD`, Homarr `SECRET_ENCRYPTION_KEY`
 - Tailscale auth keys, VPN (gluetun) credentials

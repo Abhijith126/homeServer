@@ -16,7 +16,7 @@ x-logging: &logging
 
 services:
   homeassistant:
-    image: ghcr.io/home-assistant/home-assistant:2026.7.3
+    image: ghcr.io/home-assistant/home-assistant:2026.8.1
     container_name: homeassistant
     restart: unless-stopped
     logging: *logging

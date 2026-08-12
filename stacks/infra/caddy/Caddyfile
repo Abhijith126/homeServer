@@ -29,10 +29,6 @@ qbit.{$DOMAIN} {
 	reverse_proxy ryzen:8080
 }
 
-backup.{$DOMAIN} {
-	reverse_proxy ryzen:8200
-}
-
 # ── apps node ──
 sonarr.{$DOMAIN} {
 	reverse_proxy apps:8989

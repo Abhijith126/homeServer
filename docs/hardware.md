@@ -14,7 +14,7 @@
 | --- | --- | --- |
 | `/` | 256 GB SSD | OS + Docker |
 | `/mnt/nas` | 2×4 TB RAID | Media & data (`Movies`, `Shows`, `Music`, `Downloads`, `Gallery`, `Files`) — exported via NFS |
-| `/mnt/hdd2` | HDD | Backup target (Duplicati + per-stack `backup.sh`) |
+| `/mnt/hdd2` | HDD | Backup target — restic repo (`/mnt/hdd2/restic`) |
 | `/opt/homelab/data` | SSD | Per-app config bind mounts |
 
 App/infra nodes mount `ryzen:/mnt/nas → /mnt/nas` and `ryzen:/mnt/hdd2 → /mnt/nfs/backup`.

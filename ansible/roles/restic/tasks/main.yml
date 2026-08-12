@@ -1,0 +1,27 @@
+---
+- name: Install restic
+  ansible.builtin.apt:
+    name: restic
+    state: present
+    update_cache: true
+
+- name: Install the backup systemd service
+  ansible.builtin.template:
+    src: homelab-backup.service.j2
+    dest: /etc/systemd/system/homelab-backup.service
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Install the backup systemd timer
+  ansible.builtin.template:
+    src: homelab-backup.timer.j2
+    dest: /etc/systemd/system/homelab-backup.timer
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Enable and start the nightly backup timer
+  ansible.builtin.systemd:
+    name: homelab-backup.timer
+    enabled: "{{ restic_enabled }}"
+    state: "{{ 'started' if restic_enabled else 'stopped' }}"
+    daemon_reload: true
