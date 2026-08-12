@@ -24,13 +24,12 @@ x-common: &common
 services:
   restic:
     <<: *common
-    image: mazzolino/restic:1.6.0
+    image: mazzolino/restic:1.8.2
     container_name: restic
     environment:
       TZ: ${TZ}
       RUN_ON_STARTUP: "false"
       BACKUP_CRON: ${RESTIC_BACKUP_CRON}
-      CHECK_CRON: ${RESTIC_CHECK_CRON}
       RESTIC_REPOSITORY: /repo
       RESTIC_PASSWORD: ${RESTIC_PASSWORD}
       RESTIC_COMPRESSION: auto
@@ -51,7 +50,7 @@ services:
 
   restic-media:
     <<: *common
-    image: mazzolino/restic:1.6.0
+    image: mazzolino/restic:1.8.2
     container_name: restic-media
     environment:
       TZ: ${TZ}
@@ -62,9 +61,30 @@ services:
       RESTIC_COMPRESSION: auto
       RESTIC_BACKUP_SOURCES: /nas/Gallery /nas/Files /nas/Drive
       RESTIC_BACKUP_ARGS: --tag media
-      RESTIC_FORGET_ARGS: --keep-daily 7 --keep-weekly 8 --keep-monthly 12 --prune
+      RESTIC_FORGET_ARGS: --keep-within 1m --prune
     volumes:
       - /mnt/nas:/nas:ro
+      - ${RESTIC_REPO_PATH}:/repo
+    labels:
+      homelab.managed: "true"
+      homelab.node: "storage"
+      homelab.stack: "restic"
+      homelab.category: "backup"
+      diun.enable: "true"
+    networks:
+      - default
+
+  # Separate container: resticker forbids BACKUP_CRON + CHECK_CRON together.
+  restic-check:
+    <<: *common
+    image: mazzolino/restic:1.8.2
+    container_name: restic-check
+    environment:
+      TZ: ${TZ}
+      CHECK_CRON: ${RESTIC_CHECK_CRON}
+      RESTIC_REPOSITORY: /repo
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD}
+    volumes:
       - ${RESTIC_REPO_PATH}:/repo
     labels:
       homelab.managed: "true"

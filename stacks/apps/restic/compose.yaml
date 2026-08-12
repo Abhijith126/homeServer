@@ -20,7 +20,7 @@ services:
     logging: *logging
     security_opt:
       - no-new-privileges:true
-    image: mazzolino/restic:1.6.0
+    image: mazzolino/restic:1.8.2
     container_name: restic
     environment:
       TZ: ${TZ}
