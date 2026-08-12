@@ -12,6 +12,9 @@
 	acme_dns cloudflare {$CLOUDFLARE_API_TOKEN}
 }
 
+# Hostnames are kept identical to the Cloudflare tunnel's public hostnames so the
+# SAME URL works on LAN (here, direct) and remotely (tunnel) — split-horizon.
+
 # ── storage node (ryzen) ──
 photos.{$DOMAIN} {
 	reverse_proxy ryzen:2283
@@ -21,11 +24,13 @@ jellyfin.{$DOMAIN} {
 	reverse_proxy ryzen:8096
 }
 
-files.{$DOMAIN} {
+drive.{$DOMAIN} {
 	reverse_proxy ryzen:8082
 }
 
-qbit.{$DOMAIN} {
+torrent.{$DOMAIN} {
+	# qBittorrent WebUI (published by gluetun). Stack uses 8080; the tunnel
+	# currently points at 8083 — reconcile when qBittorrent is fixed.
 	reverse_proxy ryzen:8080
 }
 
@@ -50,21 +55,23 @@ prowlarr.{$DOMAIN} {
 	reverse_proxy apps:9696
 }
 
-homarr.{$DOMAIN} {
+server.{$DOMAIN} {
 	reverse_proxy apps:7575
 }
 
-home.{$DOMAIN} {
+has.{$DOMAIN} {
 	reverse_proxy apps:8123
 }
 
-status.{$DOMAIN} {
+uptime.{$DOMAIN} {
 	reverse_proxy apps:3001
 }
 
-portfolio.{$DOMAIN} {
-	reverse_proxy apps:3000
-}
+# Portfolio is served at the ROOT domain via the tunnel; not deployed on LAN yet.
+# When ready, uncomment and point at its upstream:
+# {$DOMAIN} {
+# 	reverse_proxy ryzen:5172
+# }
 
 # ── infra node ──
 pihole.{$DOMAIN} {
@@ -76,7 +83,7 @@ beszel.{$DOMAIN} {
 	reverse_proxy infra:8090
 }
 
-portainer.{$DOMAIN} {
+docker.{$DOMAIN} {
 	# Portainer serves HTTPS with a self-signed cert on 9443.
 	reverse_proxy https://infra:9443 {
 		transport http {
