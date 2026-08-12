@@ -78,7 +78,7 @@ make config          # renders stacks/<node>/<app>/.env for every stack
 
 - `backup.sh` — tars `${DOCKER_DATA}/<app>` → `${NFS_BACKUP}/<app>/<app>-<timestamp>.tar.gz`, keeps the newest 7. `--stop` for a consistent snapshot.
 - `restore.sh` — restores newest (or a named) archive.
-- restic backs up `/opt/homelab/data` on every node to the shared repo on `/mnt/hdd2` (`scripts/backup.sh`, nightly timer).
+- restic backs up `/opt/homelab/data` on every node to the shared repo on `/mnt/hdd2` (the `stacks/<node>/restic` container stack, on a nightly cron). Photos + documents on `/mnt/nas` are backed up from the storage node as a separate `media` snapshot.
 - Full rebuild is documented in `docs/disaster-recovery.md` *(Phase 4)*.
 
 ## 9. Restart & health

@@ -1,0 +1,48 @@
+---
+# ─────────────────────────────────────────────────────────────
+# restic — scheduled encrypted, deduplicated backups (resticker)
+# Node: infra   Category: backup
+# Backs up this node's app state to the shared repo on hdd2 (reached over NFS
+# at /mnt/nfs/backup/restic). Snapshots are tagged per host.
+# ─────────────────────────────────────────────────────────────
+name: restic
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  restic:
+    restart: unless-stopped
+    logging: *logging
+    security_opt:
+      - no-new-privileges:true
+    image: mazzolino/restic:1.6.0
+    container_name: restic
+    environment:
+      TZ: ${TZ}
+      RUN_ON_STARTUP: "false"
+      BACKUP_CRON: ${RESTIC_BACKUP_CRON}
+      RESTIC_REPOSITORY: /repo
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD}
+      RESTIC_COMPRESSION: auto
+      RESTIC_BACKUP_SOURCES: /data
+      RESTIC_BACKUP_ARGS: --tag homelab
+      RESTIC_FORGET_ARGS: --keep-within 1m --prune
+    volumes:
+      - ${DOCKER_DATA}:/data:ro
+      - ${RESTIC_REPO_PATH}:/repo
+    labels:
+      homelab.managed: "true"
+      homelab.node: "infra"
+      homelab.stack: "restic"
+      homelab.category: "backup"
+      diun.enable: "true"
+    networks:
+      - default
+
+networks:
+  default:
+    name: restic

@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help validate new-app networks fmt deploy backup restore
+.PHONY: help validate new-app networks fmt deploy
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -23,12 +23,6 @@ config-check: ## Verify all stack .env files exist with no unset secrets
 
 deploy: ## Deploy all stacks for a node: make deploy NODE=infra [SKIP="diun caddy"]
 	@./scripts/deploy-node.sh $(NODE) $(if $(SKIP),--skip "$(SKIP)")
-
-backup: ## Back up this node to restic: make backup [STOP=1] [CHECK=1]
-	@sudo ./scripts/backup.sh $(if $(STOP),--stop) $(if $(CHECK),--check)
-
-restore: ## Restore from restic: make restore [SNAP=latest] [TARGET=/tmp/r]
-	@sudo ./scripts/restore.sh $(or $(SNAP),snapshots) $(if $(TARGET),--target $(TARGET))
 
 fmt: ## Format shell scripts (shfmt -i 4)
 	@shfmt -i 4 -w $$(find scripts stacks -name '*.sh')

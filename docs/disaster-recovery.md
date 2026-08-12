@@ -6,9 +6,9 @@ How to recover from a lost container, a dead node, or a total rebuild.
 
 | Data | Location | Protected by |
 | --- | --- | --- |
-| App configs & state | `/opt/homelab/data` | **restic** (`scripts/backup.sh`) → repo on `/mnt/hdd2/restic` — encrypted, deduplicated, versioned, per-host snapshots |
-| Immich database | Postgres (on ryzen) | `pg_dumpall` dumped to `immich/db-dump/` and captured inside the restic snapshot |
-| Media & documents | `/mnt/nas/{Gallery,Files,Drive}` | RAID mirror **+ restic `media` snapshot** on `/mnt/hdd2` (backed up from ryzen via `MEDIA_PATHS`). Add an off-site copy for true 3-2-1. |
+| App configs & state | `/opt/homelab/data` | **restic** container stack (`stacks/<node>/restic`) → repo on `/mnt/hdd2/restic` — encrypted, deduplicated, versioned, per-host snapshots (tag `homelab`) |
+| Immich database | Postgres (on ryzen) | Immich's built-in DB backup → `Gallery/backups/`, captured by the `media` snapshot (live `immich/postgres` is excluded) |
+| Media & documents | `/mnt/nas/{Gallery,Files,Drive}` | RAID mirror **+ restic `media` snapshot** on `/mnt/hdd2` (backed up from ryzen by the `restic-media` service). Add an off-site copy for true 3-2-1. |
 | Infrastructure as code | this git repo | git remote |
 
 **Test restores periodically** — an untested backup is a hope, not a plan.
@@ -24,7 +24,7 @@ docker compose up -d
 
 ## Scenario 2 — A disk in the RAID fails
 
-Replace the disk and let the array rebuild (mdadm/ZFS). Media stays available during rebuild. If the whole array is lost, restore the media from the restic `media` snapshot (`sudo ./scripts/restore.sh <media-snapshot-id> --target /`, which recreates `/mnt/nas/{Gallery,Files,Drive}`) — provided `/mnt/hdd2` survived; otherwise from your off-site copy.
+Replace the disk and let the array rebuild (mdadm/ZFS). Media stays available during rebuild. If the whole array is lost, restore the media from the restic `media` snapshot (`docker exec restic-media restic restore latest --tag media --target /`, which recreates `/mnt/nas/{Gallery,Files,Drive}`) — provided `/mnt/hdd2` survived; otherwise from your off-site copy.
 
 ## Scenario 3 — Rebuild a node from zero
 
@@ -46,15 +46,16 @@ flowchart TB
    ansible-playbook site.yml --limit <node> -e tailscale_authkey=tskey-...
    ```
    (Rebuild **ryzen first** so NFS is up before apps/infra mount it.)
-3. **Restore app state.** Pull everything under `/opt/homelab/data` back from restic in one shot:
+3. **Restore app state.** Set secrets, deploy the restic stack, then pull `/opt/homelab/data` back from the repo:
    ```bash
    cd ~/homeServer
-   cp .env.example .env && $EDITOR .env     # restore secrets, incl. RESTIC_PASSWORD + RESTIC_REPOSITORY
-   make config                              # regenerate per-stack .env files
-   make restore SNAP=latest                 # restores /opt/homelab/data from the repo
+   cp .env.example .env && $EDITOR .env      # restore secrets, incl. RESTIC_PASSWORD
+   make config                               # regenerate per-stack .env files
+   cd stacks/<node>/restic && docker compose up -d
+   docker exec restic restic restore latest --tag homelab --target /
    ```
 4. **Restore databases.**
-   - **Immich:** the SQL dump comes back under `immich/db-dump/`. Bring Immich up, then `cd stacks/storage/immich && ./restore.sh` loads the newest `pg_dumpall`. The photo library on `/mnt/nas/Gallery` is RAID-protected and untouched.
+   - **Immich:** the DB dumps live in the restored `Gallery/backups/`. Bring Immich up, then load the newest dump per the Immich docs (or `stacks/storage/immich/restore.sh`). The photo library on `/mnt/nas/Gallery` comes back from the `media` snapshot: `docker exec restic-media restic restore latest --tag media --target /`.
 5. **Deploy.** `docker compose up -d` in each stack (or re-add the Portainer Git stacks).
 6. **Re-point the network.**
    - Router DHCP DNS → infra node IP (Pi-hole).
@@ -78,7 +79,7 @@ flowchart TB
 - [ ] DNS resolves + ad-blocking active (Pi-hole query log)
 - [ ] Caddy serves each `app.${DOMAIN}` over HTTPS
 - [ ] Beszel shows all nodes reporting
-- [ ] A fresh `make backup CHECK=1` succeeds and `restic check` passes
+- [ ] A fresh `docker exec restic backup` succeeds and `docker exec restic restic check` passes
 
 ## Keep off-box
 
