@@ -1,0 +1,10 @@
+[Unit]
+Description=Nightly homelab restic backup
+
+[Timer]
+OnCalendar={{ restic_oncalendar }}
+RandomizedDelaySec={{ restic_randomized_delay }}
+Persistent=true
+
+[Install]
+WantedBy=timers.target

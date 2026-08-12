@@ -20,5 +20,6 @@ ufw_allow_tcp:
   - 8081     # pihole web
   - 8090     # beszel
   - 9443     # portainer BE web UI
+  - 45876    # beszel-agent (hub scrapes it over host networking)
 ufw_allow_udp:
   - 53       # DNS

@@ -2,7 +2,7 @@
 #
 # Immich DATABASE backup (pg_dumpall -> gzip -> NFS_BACKUP).
 # The photo library (${IMMICH_LIBRARY}) is large and is NOT included here —
-# it is protected by the RAID array + Duplicati. This captures the
+# it is protected by the RAID array (add an off-site copy). This captures the
 # irreplaceable metadata (albums, faces, config) only.
 # See https://docs.immich.app/administration/backup-and-restore
 # Usage: ./backup.sh
@@ -40,4 +40,4 @@ done
 
 echo "Backup complete: ${archive}"
 echo "NOTE: the photo library (${IMMICH_LIBRARY:-see .env}) is NOT in this archive —"
-echo "      ensure Duplicati / RAID covers it."
+echo "      ensure RAID + an off-site copy covers it."

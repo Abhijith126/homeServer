@@ -55,7 +55,7 @@ docker compose up -d
 
 ## Backup / Restore
 
-`backup.sh` dumps the **database** (the irreplaceable metadata: albums, faces, config) — not the library, which is protected by the RAID array + Duplicati.
+`backup.sh` dumps the **database** (the irreplaceable metadata: albums, faces, config) — not the library, which is protected by the RAID array (add an off-site copy for the photos). The nightly restic backup also captures a fresh DB dump, so this script is mainly for on-demand dumps.
 
 ```bash
 ./backup.sh            # pg_dumpall → ${NFS_BACKUP}/immich/immich-db-<ts>.sql.gz
