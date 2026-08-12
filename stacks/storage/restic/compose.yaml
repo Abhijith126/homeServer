@@ -26,6 +26,7 @@ services:
     <<: *common
     image: mazzolino/restic:1.8.2
     container_name: restic
+    hostname: storage
     environment:
       TZ: ${TZ}
       RUN_ON_STARTUP: "false"
@@ -52,6 +53,7 @@ services:
     <<: *common
     image: mazzolino/restic:1.8.2
     container_name: restic-media
+    hostname: storage
     environment:
       TZ: ${TZ}
       RUN_ON_STARTUP: "false"
