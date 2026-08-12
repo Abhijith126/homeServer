@@ -8,7 +8,7 @@ How to recover from a lost container, a dead node, or a total rebuild.
 | --- | --- | --- |
 | App configs & state | `/opt/homelab/data` | **restic** (`scripts/backup.sh`) → repo on `/mnt/hdd2/restic` — encrypted, deduplicated, versioned, per-host snapshots |
 | Immich database | Postgres (on ryzen) | `pg_dumpall` dumped to `immich/db-dump/` and captured inside the restic snapshot |
-| Media & photos | `/mnt/nas` (RAID) | RAID mirror (add an off-site copy for the photo library — restic covers app state, not `/mnt/nas`) |
+| Media & documents | `/mnt/nas/{Gallery,Files,Drive}` | RAID mirror **+ restic `media` snapshot** on `/mnt/hdd2` (backed up from ryzen via `MEDIA_PATHS`). Add an off-site copy for true 3-2-1. |
 | Infrastructure as code | this git repo | git remote |
 
 **Test restores periodically** — an untested backup is a hope, not a plan.
@@ -24,7 +24,7 @@ docker compose up -d
 
 ## Scenario 2 — A disk in the RAID fails
 
-Replace the disk and let the array rebuild (mdadm/ZFS). Media stays available during rebuild. If the whole array is lost, media must be restored from an off-site copy — the restic repo covers app state under `/opt/homelab/data`, not the media library on `/mnt/nas`.
+Replace the disk and let the array rebuild (mdadm/ZFS). Media stays available during rebuild. If the whole array is lost, restore the media from the restic `media` snapshot (`sudo ./scripts/restore.sh <media-snapshot-id> --target /`, which recreates `/mnt/nas/{Gallery,Files,Drive}`) — provided `/mnt/hdd2` survived; otherwise from your off-site copy.
 
 ## Scenario 3 — Rebuild a node from zero
 
@@ -65,7 +65,7 @@ flowchart TB
 
 1. Clone this repo.
 2. Rebuild **ryzen** (Scenario 3) — it holds the data and NFS exports.
-3. Restore `/mnt/nas` (media) from your off-site copy; `/mnt/hdd2` holds the restic repo used to restore app state.
+3. Restore app state **and** `/mnt/nas` media from the restic repo if `/mnt/hdd2` survived; if it didn't, restore both from your off-site copy.
 4. Rebuild **apps** and **infra**.
 5. Restore each stack's config + databases, deploy, re-point DNS.
 

@@ -40,8 +40,17 @@ data_root="${DOCKER_DATA:-/opt/homelab/data}"
 keep_daily="${RESTIC_KEEP_DAILY:-7}"
 keep_weekly="${RESTIC_KEEP_WEEKLY:-4}"
 keep_monthly="${RESTIC_KEEP_MONTHLY:-6}"
+# Media (photos/documents) — a separate, longer-retained snapshot. Set only on
+# the node where these trees are local (storage); empty elsewhere.
+mkeep_daily="${MEDIA_KEEP_DAILY:-7}"
+mkeep_weekly="${MEDIA_KEEP_WEEKLY:-8}"
+mkeep_monthly="${MEDIA_KEEP_MONTHLY:-12}"
 read -r -a backup_paths <<<"${BACKUP_PATHS:-$data_root}"
 host="$(hostname)"
+
+# Transparent compression (repo-format v2). auto = compress what benefits,
+# skip already-compressed data like photos/video.
+export RESTIC_COMPRESSION="${RESTIC_COMPRESSION:-auto}"
 
 do_stop=false
 do_check=false
@@ -109,12 +118,36 @@ if [[ $backup_rc -ne 0 ]]; then
     exit "$backup_rc"
 fi
 
-echo "Applying retention (daily=${keep_daily} weekly=${keep_weekly} monthly=${keep_monthly})"
+echo "Applying app-data retention (daily=${keep_daily} weekly=${keep_weekly} monthly=${keep_monthly})"
 restic forget --host "$host" --tag homelab \
     --keep-daily "$keep_daily" \
     --keep-weekly "$keep_weekly" \
     --keep-monthly "$keep_monthly" \
     --prune
+
+# Media (photos + documents) — separate snapshot, longer retention. Only runs on
+# the node where MEDIA_PATHS trees are local (e.g. ryzen for /mnt/nas/*).
+if [[ -n "${MEDIA_PATHS:-}" ]]; then
+    read -r -a media_req <<<"$MEDIA_PATHS"
+    media_paths=()
+    for p in "${media_req[@]}"; do
+        if [[ -e "$p" ]]; then
+            media_paths+=("$p")
+        else
+            echo "WARN: media path not found, skipping: $p" >&2
+        fi
+    done
+    if [[ ${#media_paths[@]} -gt 0 ]]; then
+        echo "Backing up media -> ${RESTIC_REPOSITORY} (tag media): ${media_paths[*]}"
+        restic backup "${media_paths[@]}" --tag media
+        echo "Applying media retention (daily=${mkeep_daily} weekly=${mkeep_weekly} monthly=${mkeep_monthly})"
+        restic forget --host "$host" --tag media \
+            --keep-daily "$mkeep_daily" \
+            --keep-weekly "$mkeep_weekly" \
+            --keep-monthly "$mkeep_monthly" \
+            --prune
+    fi
+fi
 
 if [[ "$do_check" == true ]]; then
     echo "Verifying repository integrity..."
@@ -122,4 +155,4 @@ if [[ "$do_check" == true ]]; then
 fi
 
 echo "Backup complete."
-restic snapshots --host "$host" --tag homelab --latest 3
+restic snapshots --host "$host"
