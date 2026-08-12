@@ -21,6 +21,7 @@ services:
       - no-new-privileges:true
     image: mazzolino/restic:1.8.2
     container_name: restic
+    hostname: infra
     environment:
       TZ: ${TZ}
       RUN_ON_STARTUP: "false"
