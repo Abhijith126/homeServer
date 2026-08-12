@@ -70,7 +70,7 @@ Downloads and libraries share one volume (`/mnt/nas`) so imports are hardlinks, 
 
 ## Storage & data flow
 
-- **Config** (small, precious) → bind mount `${DOCKER_DATA}/<app>` (`/opt/homelab/data`) on each node, captured by restic (`scripts/backup.sh`).
+- **Config** (small, precious) → bind mount `${DOCKER_DATA}/<app>` (`/opt/homelab/data`) on each node, captured by the restic container stack (`stacks/<node>/restic`).
 - **Media / bulk** → `/mnt/nas` (RAID on ryzen), served to other nodes via NFS.
 - **Backups** → restic repo on `/mnt/hdd2` (encrypted, deduplicated, versioned; nightly per-node).
 

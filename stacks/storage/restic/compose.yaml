@@ -1,0 +1,80 @@
+---
+# ─────────────────────────────────────────────────────────────
+# restic — scheduled encrypted, deduplicated backups (resticker)
+# Node: storage (ryzen)   Category: backup
+# Two jobs into ONE shared repo on hdd2 (bind-mounted at /repo):
+#   restic        → app state  /opt/homelab/data        tag: homelab
+#   restic-media  → photos+docs /mnt/nas/{Gallery,Files,Drive}  tag: media
+# Sources are mounted read-only. Restore is a manual `docker exec` (see README).
+# ─────────────────────────────────────────────────────────────
+name: restic
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-common: &common
+  restart: unless-stopped
+  logging: *logging
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  restic:
+    <<: *common
+    image: mazzolino/restic:1.6.0
+    container_name: restic
+    environment:
+      TZ: ${TZ}
+      RUN_ON_STARTUP: "false"
+      BACKUP_CRON: ${RESTIC_BACKUP_CRON}
+      CHECK_CRON: ${RESTIC_CHECK_CRON}
+      RESTIC_REPOSITORY: /repo
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD}
+      RESTIC_COMPRESSION: auto
+      RESTIC_BACKUP_SOURCES: /data
+      RESTIC_BACKUP_ARGS: --tag homelab --exclude /data/immich/postgres
+      RESTIC_FORGET_ARGS: --keep-within 1m --prune
+    volumes:
+      - ${DOCKER_DATA}:/data:ro
+      - ${RESTIC_REPO_PATH}:/repo
+    labels:
+      homelab.managed: "true"
+      homelab.node: "storage"
+      homelab.stack: "restic"
+      homelab.category: "backup"
+      diun.enable: "true"
+    networks:
+      - default
+
+  restic-media:
+    <<: *common
+    image: mazzolino/restic:1.6.0
+    container_name: restic-media
+    environment:
+      TZ: ${TZ}
+      RUN_ON_STARTUP: "false"
+      BACKUP_CRON: ${RESTIC_MEDIA_CRON}
+      RESTIC_REPOSITORY: /repo
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD}
+      RESTIC_COMPRESSION: auto
+      RESTIC_BACKUP_SOURCES: /nas/Gallery /nas/Files /nas/Drive
+      RESTIC_BACKUP_ARGS: --tag media
+      RESTIC_FORGET_ARGS: --keep-daily 7 --keep-weekly 8 --keep-monthly 12 --prune
+    volumes:
+      - /mnt/nas:/nas:ro
+      - ${RESTIC_REPO_PATH}:/repo
+    labels:
+      homelab.managed: "true"
+      homelab.node: "storage"
+      homelab.stack: "restic"
+      homelab.category: "backup"
+      diun.enable: "true"
+    networks:
+      - default
+
+networks:
+  default:
+    name: restic
