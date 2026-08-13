@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────────────────────
 # Homelab reverse-proxy routes.
-# Upstreams use node hostnames (ryzen / apps / infra) — resolvable via
-# Tailscale MagicDNS or /etc/hosts. Automatic HTTPS via Let's Encrypt;
+# Upstreams use node LAN IPs (.120 ryzen / .121 apps / .122 infra) — the Caddy
+# container can't resolve the bare Tailscale names. Automatic HTTPS via Let's Encrypt;
 # for a Tailscale-only setup swap the ACME block for `tls internal` or a
 # DNS-01 challenge (see the commented example at the bottom).
 # ─────────────────────────────────────────────────────────────
@@ -17,75 +17,75 @@
 
 # ── storage node (ryzen) ──
 photos.{$DOMAIN} {
-	reverse_proxy ryzen:2283
+	reverse_proxy 192.168.1.120:2283
 }
 
 jellyfin.{$DOMAIN} {
-	reverse_proxy ryzen:8096
+	reverse_proxy 192.168.1.120:8096
 }
 
 drive.{$DOMAIN} {
-	reverse_proxy ryzen:8082
+	reverse_proxy 192.168.1.120:8082
 }
 
 torrent.{$DOMAIN} {
 	# qBittorrent WebUI (published by gluetun). Stack uses 8080; the tunnel
 	# currently points at 8083 — reconcile when qBittorrent is fixed.
-	reverse_proxy ryzen:8080
+	reverse_proxy 192.168.1.120:8080
 }
 
 # ── apps node ──
 sonarr.{$DOMAIN} {
-	reverse_proxy apps:8989
+	reverse_proxy 192.168.1.121:8989
 }
 
 radarr.{$DOMAIN} {
-	reverse_proxy apps:7878
+	reverse_proxy 192.168.1.121:7878
 }
 
 lidarr.{$DOMAIN} {
-	reverse_proxy apps:8686
+	reverse_proxy 192.168.1.121:8686
 }
 
 bazarr.{$DOMAIN} {
-	reverse_proxy apps:6767
+	reverse_proxy 192.168.1.121:6767
 }
 
 prowlarr.{$DOMAIN} {
-	reverse_proxy apps:9696
+	reverse_proxy 192.168.1.121:9696
 }
 
 server.{$DOMAIN} {
-	reverse_proxy apps:7575
+	reverse_proxy 192.168.1.121:7575
 }
 
 has.{$DOMAIN} {
-	reverse_proxy apps:8123
+	reverse_proxy 192.168.1.121:8123
 }
 
 uptime.{$DOMAIN} {
-	reverse_proxy apps:3001
+	reverse_proxy 192.168.1.121:3001
 }
 
 # Portfolio is served at the ROOT domain via the tunnel; not deployed on LAN yet.
 # When ready, uncomment and point at its upstream:
 # {$DOMAIN} {
-# 	reverse_proxy ryzen:5172
+# 	reverse_proxy 192.168.1.120:5172
 # }
 
 # ── infra node ──
 pihole.{$DOMAIN} {
 	redir / /admin
-	reverse_proxy infra:8081
+	reverse_proxy 192.168.1.122:8081
 }
 
 beszel.{$DOMAIN} {
-	reverse_proxy infra:8090
+	reverse_proxy 192.168.1.122:8090
 }
 
 docker.{$DOMAIN} {
 	# Portainer serves HTTPS with a self-signed cert on 9443.
-	reverse_proxy https://infra:9443 {
+	reverse_proxy https://192.168.1.122:9443 {
 		transport http {
 			tls_insecure_skip_verify
 		}
