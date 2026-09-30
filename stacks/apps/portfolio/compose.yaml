@@ -1,10 +1,6 @@
 ---
-# ─────────────────────────────────────────────────────────────
-# portfolio — personal website
-# Node: apps   Category: web
-# This image is BUILT from your own portfolio repo (not pulled from a
-# registry here). Build & push it, then set PORTFOLIO_IMAGE in .env.
-# ─────────────────────────────────────────────────────────────
+# portfolio — personal website on the apps node.
+# Downloads the compiled release ZIP; no application build runs on this host.
 name: portfolio
 
 x-logging: &logging
@@ -22,19 +18,70 @@ x-common: &common
 services:
   portfolio:
     <<: *common
-    image: ${PORTFOLIO_IMAGE}
+    image: node:22-alpine
+    platform: linux/amd64
     container_name: portfolio
+    init: true
     env_file:
       - path: .env
         required: false
+    environment:
+      TZ: ${TZ:-Europe/Amsterdam}
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+      PORTFOLIO_RELEASE: "${PORTFOLIO_RELEASE:-latest}"
     ports:
-      - "${PORTFOLIO_PORT}:3000"
+      - "${PORTFOLIO_PORT:-3000}:3000"
+    working_dir: /app
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        apk add --no-cache curl unzip su-exec
+        release="$$PORTFOLIO_RELEASE"
+        if [ "$$release" = latest ]; then
+          release=$$(node -e "
+            fetch('https://api.github.com/repos/Abhijith126/portfolio/releases/latest')
+              .then(async r => {
+                if (!r.ok) throw new Error('GitHub release lookup: ' + r.status);
+                const j = await r.json();
+                process.stdout.write(j.tag_name);
+              })
+              .catch(e => { console.error(e.message); process.exit(1); });
+          ")
+        fi
+        case "$$release" in
+          ""|*[!a-zA-Z0-9_.-]*) echo "Invalid release tag" >&2; exit 1 ;;
+        esac
+        echo "Downloading portfolio release $$release"
+        base="https://github.com/Abhijith126/portfolio/releases/download/$$release"
+        download=$$(mktemp -d)
+        cd "$$download"
+        curl -fL --retry 3 -o portfolio-build.zip "$$base/portfolio-build.zip"
+        curl -fL --retry 3 -o portfolio-build.zip.sha256 "$$base/portfolio-build.zip.sha256"
+        sha256sum -c portfolio-build.zip.sha256
+        # /app belongs to this container; there is no host mount or data volume.
+        rm -rf /app
+        mkdir /app
+        unzip -q portfolio-build.zip -d /app
+        rm -rf "$$download"
+        chown -R node:node /app
+        cd /app
+        echo "Starting portfolio release $$release"
+        exec su-exec node node server.js
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000 || exit 1"]
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          require('http').get('http://127.0.0.1:3000/',r=>{r.resume();process.exit(r.statusCode===200?0:1)})
+          .on('error',()=>process.exit(1))
       interval: 30s
-      timeout: 10s
+      timeout: 5s
+      start_period: 120s
       retries: 3
-      start_period: 20s
     labels:
       homelab.managed: "true"
       homelab.node: "apps"
