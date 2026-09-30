@@ -69,6 +69,7 @@ Every stack follows one contract — naming, volumes, secrets, health checks, la
 | [hardware.md](docs/hardware.md) | Nodes, specs, storage layout |
 | [bootstrap.md](docs/bootstrap.md) | Provision a host & deploy stacks |
 | [upgrade.md](docs/upgrade.md) | Update workflow & rollback |
+| [automation.md](docs/automation.md) | Hosted Renovate setup, update policy & Portainer GitOps |
 | [disaster-recovery.md](docs/disaster-recovery.md) | Backups & rebuild-from-zero runbook |
 | [conventions.md](docs/conventions.md) | The platform contract every stack follows |
 

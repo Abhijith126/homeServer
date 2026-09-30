@@ -18,7 +18,7 @@ make new-app NODE=<node> APP=<app> CAT=<category>
 
 - **No `version:` key** (obsolete in the Compose spec).
 - Top-level `name: <app>` sets a stable project name regardless of who deploys it.
-- **Pin image tags** — never `:latest`. Updates surface via Diun/Renovate as notifications, not silent pulls.
+- **Pin image tags** — never `:latest`. Renovate proposes tag/digest updates; selected patches and digest updates merge after CI. See [automation.md](automation.md).
 - `restart: unless-stopped` everywhere (never `always`).
 - `security_opt: [no-new-privileges:true]` by default; override only when an image genuinely needs privilege (documented in that stack's README).
 - Every service defines a `healthcheck`.
@@ -94,6 +94,8 @@ make config          # renders stacks/<node>/<app>/.env for every stack
 2. template render + config smoke test
 3. custom lint — no `version:`, no `:latest`, no `restart: always`
 4. `yamllint`, `shellcheck`, `shfmt -i 4`, `gitleaks` (when installed)
+
+CI also runs `renovate-config-validator --strict renovate.json` in a pinned Renovate container.
 
 ## 11. Versioning
 
