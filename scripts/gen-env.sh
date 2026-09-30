@@ -9,14 +9,36 @@
 # Usage:
 #   ./scripts/gen-env.sh           generate all stack .env files, then verify
 #   ./scripts/gen-env.sh --check   verify only (no writes)
+#   ./scripts/gen-env.sh --node apps   generate/verify only one node
 #
 set -euo pipefail
+umask 077
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
 check_only=false
-[[ "${1:-}" == "--check" ]] && check_only=true
+node_root=stacks
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --check)
+        check_only=true
+        shift
+        ;;
+    --node)
+        case "${2:-}" in apps | storage | infra) node_root="stacks/$2" ;; *)
+            echo "--node requires apps, storage, or infra" >&2
+            exit 1
+            ;;
+        esac
+        shift 2
+        ;;
+    *)
+        echo "usage: $0 [--check] [--node apps|storage|infra]" >&2
+        exit 1
+        ;;
+    esac
+done
 
 root_env="${repo_root}/.env"
 if [[ ! -f "$root_env" ]]; then
@@ -59,7 +81,7 @@ if [[ "$check_only" == false ]]; then
         render_stack "$example" "$out"
         generated=$((generated + 1))
         echo "  wrote ${out#./}"
-    done < <(find stacks -name '.env.example' -not -path '*/_template/*' | sort)
+    done < <(find "$node_root" -name '.env.example' -not -path '*/_template/*' | sort)
     echo ""
 fi
 
@@ -76,7 +98,7 @@ while IFS= read -r example; do
         echo "  UNSET    ${envf#./}: ${hit}"
         missing=$((missing + 1))
     done < <(grep -nE '^[A-Za-z_][A-Za-z0-9_]*=.*CHANGEME' "$envf" || true)
-done < <(find stacks -name '.env.example' -not -path '*/_template/*' | sort)
+done < <(find "$node_root" -name '.env.example' -not -path '*/_template/*' | sort)
 
 if [[ "$missing" -gt 0 ]]; then
     echo ""

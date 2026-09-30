@@ -128,28 +128,44 @@
       "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)_v(?<compatibility>\\d+\\.\\d+\\.\\d+)-ls(?<build>\\d+)$"
     },
     {
-      "description": "Merge selected app patch and digest updates only after successful checks.",
+      "description": "Merge application-stack patch and digest updates only after successful checks.",
       "matchDatasources": [
         "docker"
       ],
-      "matchPackageNames": [
-        "lscr.io/linuxserver/bazarr",
-        "lscr.io/linuxserver/lidarr",
-        "lscr.io/linuxserver/prowlarr",
-        "lscr.io/linuxserver/radarr",
-        "lscr.io/linuxserver/sonarr",
-        "ghcr.io/homarr-labs/homarr",
-        "louislam/uptime-kuma",
-        "filebrowser/filebrowser",
-        "henrygd/beszel",
-        "henrygd/beszel-agent",
-        "node"
+      "matchFileNames": [
+        "stacks/apps/**",
+        "stacks/storage/**"
       ],
       "matchUpdateTypes": [
         "patch",
         "digest"
       ],
       "automerge": true
+    },
+    {
+      "description": "Merge Beszel monitoring patch and digest updates after successful checks.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "henrygd/beszel",
+        "henrygd/beszel-agent"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "digest"
+      ],
+      "automerge": true
+    },
+    {
+      "description": "Backup tooling requires review before deployment.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "mazzolino/restic"
+      ],
+      "automerge": false
     },
     {
       "description": "Keep Beszel hub and agent versions together.",

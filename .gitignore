@@ -23,6 +23,7 @@ age.key
 
 # ── Runtime / data (should live outside the repo; guard anyway) ──
 data/
+.deploy-state/
 **/data/
 *.log
 

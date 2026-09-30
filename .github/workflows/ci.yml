@@ -24,6 +24,9 @@ jobs:
       - name: Run validation suite
         run: ./scripts/validate.sh
 
+      - name: Test automatic deployment
+        run: python3 tests/test_auto_deploy.py
+
       # gitleaks-action is free for personal/public repositories.
       - name: Secret scan (gitleaks)
         uses: gitleaks/gitleaks-action@v2

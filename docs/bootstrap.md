@@ -20,7 +20,7 @@ ansible-playbook site.yml --limit <node> --check --diff          # dry run
 ansible-playbook site.yml --limit <node> -e tailscale_authkey=tskey-auth-XXXX
 ```
 
-This installs Docker (+ log rotation), Tailscale, NFS, UFW, creates `/opt/homelab/data`, and (on apps/infra) mounts the NAS and installs the Portainer agent. See [../ansible/README.md](../ansible/README.md).
+This installs Docker (+ log rotation), Tailscale, NFS, UFW, creates `/opt/homelab/data`, mounts the NAS where configured, and optionally installs the Portainer agent. See [../ansible/README.md](../ansible/README.md).
 
 > **First-node ordering:** provision **ryzen** first (it's the NFS server), then apps/infra (which mount from it). `ansible-playbook site.yml` with no `--limit` does all nodes in the right play order.
 
@@ -47,7 +47,7 @@ cd stacks/<node>/<app>
 docker compose up -d
 ```
 
-**Option B — Portainer BE (Git stack):** in the UI, *Stacks → Add stack → Git repository*, point at this repo, set the compose path to `stacks/<node>/<app>/compose.yaml`, add the env vars, and enable auto-update (polling or webhook).
+**Recommended — automatic deployment on all three nodes:** install the systemd timer once per node. It deploys every stack in that node's directory after a merge to main and cleans up unused images. Follow [automation.md](automation.md). Portainer is an optional UI.
 
 Validate anything locally first:
 

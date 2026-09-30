@@ -1,6 +1,6 @@
 # Ansible — host bootstrap
 
-One command turns a fresh Debian/Ubuntu box into a ready homelab node: base packages + hardening, Docker (with log rotation), Tailscale, NFS, firewall, and the Portainer agent.
+One command turns a fresh Debian/Ubuntu box into a ready homelab node: base packages + hardening, Docker (with log rotation), Tailscale, NFS, firewall, and an optional Portainer agent.
 
 ## Prerequisites
 
@@ -36,7 +36,7 @@ ansible-playbook site.yml --limit infra -e tailscale_authkey=… # one node
 | `tailscale` | all | install + `tailscale up --ssh` |
 | `nfs_server` | storage | export `/mnt/nas` + `/mnt/hdd2` to the LAN |
 | `nfs_client` | apps, infra | mount them at `/mnt/nas` + `/mnt/nfs/backup` (systemd automount) |
-| `portainer_agent` | apps, infra | Portainer agent on `:9001` |
+| `portainer_agent` | apps, storage (opt-in) | Optional Portainer agent on `:9001` |
 
 ## Notes / gotchas
 
@@ -44,4 +44,4 @@ ansible-playbook site.yml --limit infra -e tailscale_authkey=… # one node
 - **SSH lockout:** `ssh_disable_password_auth` defaults to `false`. Only flip it to `true` after confirming key login works.
 - **ryzen uses snap Docker today.** This role installs apt Docker (the standard) and is aimed at the fresh apps/infra nodes; migrating ryzen off snap is a manual step (reinstall Docker, re-point stacks at `/opt/homelab/data`).
 - **NFS performance:** set `nfs_server_host` (in `group_vars/all.yml`) to ryzen's LAN IP rather than a Tailscale name.
-- After provisioning, deploy stacks from `../stacks/` (CLI, or add them as Portainer Git stacks).
+- After provisioning, install the [automatic deployment timer](../docs/automation.md) on each node. Portainer agents are disabled by default; enable them only if you want the optional UI.
