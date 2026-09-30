@@ -29,3 +29,12 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITLEAKS_CONFIG: ${{ github.workspace }}/.gitleaks.toml
+
+  renovate-config:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/renovatebot/renovate:44.125.1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Renovate configuration
+        run: renovate-config-validator --strict renovate.json

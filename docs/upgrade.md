@@ -2,7 +2,7 @@
 
 ## Philosophy
 
-Images are **pinned** to specific tags in git — nothing auto-updates. **Diun** watches every `diun.enable=true` container and emails you when a newer image is published; you then bump the tag deliberately, commit, and redeploy. This keeps deployments reproducible and rollbacks trivial.
+Images are **pinned** in git. The hosted Renovate GitHub app proposes tag and digest updates; selected application patch and digest updates can merge after successful CI, while other changes require review. Portainer Git stacks deploy merged changes when automatic polling is configured. See [automation.md](automation.md) for activation, policy, and deployment limitations. **Diun** continues to provide image notifications.
 
 ## Upgrade a single stack
 

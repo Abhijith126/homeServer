@@ -1,0 +1,204 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "enabledManagers": [
+    "docker-compose",
+    "dockerfile",
+    "github-actions",
+    "custom.regex"
+  ],
+  "ignorePaths": [
+    "stacks/_template/**"
+  ],
+  "dependencyDashboard": true,
+  "timezone": "Europe/Amsterdam",
+  "schedule": [
+    "* 0-4 * * *"
+  ],
+  "automergeSchedule": [
+    "* 0-4 * * *"
+  ],
+  "automerge": false,
+  "automergeType": "pr",
+  "automergeStrategy": "squash",
+  "platformAutomerge": false,
+  "ignoreTests": false,
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "rebaseWhen": "behind-base-branch",
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^stacks\\/storage\\/immich\\/\\.env\\.example$/"
+      ],
+      "matchStrings": [
+        "(?:^|\\n)IMMICH_VERSION=(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\\s"
+      ],
+      "datasourceTemplate": "docker",
+      "depNameTemplate": "ghcr.io/immich-app/immich-server",
+      "versioningTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^ansible\\/group_vars\\/all\\.yml$/"
+      ],
+      "matchStrings": [
+        "portainer_agent_version:\\s*\"(?<currentValue>[^\"]+)\""
+      ],
+      "datasourceTemplate": "docker",
+      "depNameTemplate": "portainer/agent",
+      "versioningTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^stacks\\/infra\\/caddy\\/(Dockerfile|compose\\.yaml)$/"
+      ],
+      "matchStrings": [
+        "ARG CADDY_VERSION=(?<currentValue>\\d+\\.\\d+\\.\\d+)",
+        "image:\\s*caddy-cloudflare:(?<currentValue>\\d+\\.\\d+\\.\\d+)",
+        "CADDY_VERSION:\\s*\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "docker",
+      "depNameTemplate": "caddy",
+      "versioningTemplate": "docker"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Pin registry Docker images for reproducible updates.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "pinDigests": true
+    },
+    {
+      "description": "The local Caddy image is built from caddy, not published to a registry.",
+      "matchManagers": [
+        "docker-compose"
+      ],
+      "matchPackageNames": [
+        "caddy-cloudflare"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "The custom manager updates both Caddy build ARG and local image tag together.",
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "matchPackageNames": [
+        "caddy"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "Custom managers maintain tags and version variables, not image digests.",
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "pinDigests": false
+    },
+    {
+      "description": "Track LinuxServer app versions and packaging revisions.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "lscr.io/linuxserver/bazarr",
+        "lscr.io/linuxserver/lidarr",
+        "lscr.io/linuxserver/prowlarr",
+        "lscr.io/linuxserver/radarr",
+        "lscr.io/linuxserver/sonarr"
+      ],
+      "versioning": "regex:^v?(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)(?:\\.(?<build>\\d+))?-ls(?<revision>\\d+)$"
+    },
+    {
+      "description": "Preserve the qBittorrent libtorrent compatibility suffix.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "lscr.io/linuxserver/qbittorrent"
+      ],
+      "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)_v(?<compatibility>\\d+\\.\\d+\\.\\d+)-ls(?<build>\\d+)$"
+    },
+    {
+      "description": "Merge selected app patch and digest updates only after successful checks.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "lscr.io/linuxserver/bazarr",
+        "lscr.io/linuxserver/lidarr",
+        "lscr.io/linuxserver/prowlarr",
+        "lscr.io/linuxserver/radarr",
+        "lscr.io/linuxserver/sonarr",
+        "ghcr.io/homarr-labs/homarr",
+        "louislam/uptime-kuma",
+        "filebrowser/filebrowser",
+        "henrygd/beszel",
+        "henrygd/beszel-agent",
+        "node"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "digest"
+      ],
+      "automerge": true
+    },
+    {
+      "description": "Keep Beszel hub and agent versions together.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "henrygd/beszel",
+        "henrygd/beszel-agent"
+      ],
+      "groupName": "Beszel hub and agent"
+    },
+    {
+      "description": "Portainer server and Ansible agent versions require coordinated review.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "portainer/portainer-ee",
+        "portainer/agent"
+      ],
+      "groupName": "Portainer server and agents",
+      "automerge": false
+    },
+    {
+      "description": "Immich and its upstream database dependencies require release-note review.",
+      "matchFileNames": [
+        "stacks/storage/immich/**"
+      ],
+      "groupName": "Immich stack",
+      "automerge": false
+    },
+    {
+      "description": "Caddy changes require rebuilding the local Cloudflare-enabled image.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "caddy"
+      ],
+      "groupName": "Caddy local build",
+      "automerge": false
+    },
+    {
+      "description": "Major changes always require review.",
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "automerge": false
+    }
+  ]
+}
