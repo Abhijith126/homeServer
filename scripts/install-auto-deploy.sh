@@ -35,6 +35,33 @@ done
 mounts="/mnt/nas /mnt/nfs/backup"
 [[ "$node" != storage ]] || mounts="/mnt/nas /mnt/hdd2"
 
+shift
+skip="portainer"
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --mounts)
+        mounts="${2:?--mounts needs paths}"
+        shift 2
+        ;;
+    --skip)
+        [[ $# -ge 2 ]] || {
+            echo "--skip needs a list" >&2
+            exit 1
+        }
+        skip="$2"
+        shift 2
+        ;;
+    *)
+        echo "Unknown option: $1" >&2
+        exit 1
+        ;;
+    esac
+done
+[[ "$mounts" =~ ^[a-zA-Z0-9_./\ -]+$ && "$skip" =~ ^[a-zA-Z0-9_\ -]*$ ]] || {
+    echo "Invalid mount paths or stack names" >&2
+    exit 1
+}
+
 cat >/etc/systemd/system/homelab-deploy.service <<EOF
 [Unit]
 Description=Deploy homelab Compose stacks from Git
@@ -47,7 +74,7 @@ RequiresMountsFor=$mounts
 Type=oneshot
 User=$run_user
 WorkingDirectory=$repo_root
-Environment=HOMELAB_SKIP_STACKS=portainer
+Environment="HOMELAB_SKIP_STACKS=$skip"
 Environment=GIT_TERMINAL_PROMPT=0
 Environment="GIT_SSH_COMMAND=/usr/bin/ssh -oBatchMode=yes"
 ExecStart=$repo_root/scripts/auto-deploy.sh $node

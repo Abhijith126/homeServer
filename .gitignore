@@ -34,3 +34,7 @@ Thumbs.db
 *.bak
 .idea/
 .vscode/
+
+# Local bootstrap settings, credentials, and provisioning tools
+.bootstrap/
+__pycache__/

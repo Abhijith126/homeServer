@@ -17,7 +17,7 @@ jobs:
 
       - name: Install linters
         run: |
-          python -m pip install --quiet yamllint
+          python -m pip install --quiet yamllint 'ansible>=11,<15'
           sudo apt-get update -qq
           sudo apt-get install -y -qq shellcheck
 
@@ -26,6 +26,26 @@ jobs:
 
       - name: Test automatic deployment
         run: python3 tests/test_auto_deploy.py
+
+      - name: Test reusable bootstrap
+        run: python3 tests/test_bootstrap.py
+
+      - name: Validate local provisioning playbook
+        run: ansible-playbook -i localhost, ansible/bootstrap.yml --syntax-check
+        env:
+          ANSIBLE_CONFIG: ${{ github.workspace }}/ansible/ansible.cfg
+
+      - name: Validate Caddy configuration with internal TLS
+        run: |
+          docker run --rm \
+            -e DOMAIN=home.arpa \
+            -e ACME_EMAIL=admin@example.invalid \
+            -e STORAGE_HOST=10.10.0.10 \
+            -e APPS_HOST=10.10.0.11 \
+            -e INFRA_HOST=10.10.0.12 \
+            -e CADDY_GLOBAL_OPTIONS=local_certs \
+            -v "$PWD/stacks/infra/caddy/Caddyfile:/etc/Caddyfile:ro" \
+            caddy:2.11.4 caddy adapt --config /etc/Caddyfile --validate
 
       # gitleaks-action is free for personal/public repositories.
       - name: Secret scan (gitleaks)

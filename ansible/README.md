@@ -2,6 +2,10 @@
 
 One command turns a fresh Debian/Ubuntu box into a ready homelab node: base packages + hardening, Docker (with log rotation), Tailscale, NFS, firewall, and an optional Portainer agent.
 
+## Local one-command setup
+
+For a fresh clone on each node, run `./scripts/bootstrap-node.sh` from the repository root. It installs Ansible, generates a local inventory and settings, and runs `ansible/bootstrap.yml`. See [bootstrap.md](../docs/bootstrap.md). The instructions below describe advanced provisioning from a separate workstation.
+
 ## Prerequisites
 
 - SSH access to each host as a sudo user (`ansible_user`, default `pjh10`).
@@ -16,7 +20,7 @@ One command turns a fresh Debian/Ubuntu box into a ready homelab node: base pack
 ## Configure
 
 1. Edit `inventory.ini` — set each node's **LAN IP**.
-2. Review `group_vars/` — `all.yml` (identity, NFS, firewall defaults) and the per-node files (`storage.yml`, `apps.yml`, `infra.yml`).
+2. Review `group_vars/` — `all.yml` (identity, NFS, firewall defaults) and the per-node files (`storage_nodes.yml`, `app_nodes.yml`, `infra_nodes.yml`).
 3. Get a Tailscale **auth key** from the admin console (pass it at run time — never commit it).
 
 ## Run
@@ -40,7 +44,7 @@ ansible-playbook site.yml --limit infra -e tailscale_authkey=… # one node
 
 ## Notes / gotchas
 
-- **Debian 13 (trixie):** Docker & Tailscale have no `trixie` apt suite yet — `group_vars/apps.yml` and `infra.yml` pin `docker_apt_release`/`tailscale_apt_release` to `bookworm`.
+- **OS repositories:** local bootstrap uses the installed OS codename for Docker. On Debian 13 it uses the configured bookworm fallback for Tailscale.
 - **SSH lockout:** `ssh_disable_password_auth` defaults to `false`. Only flip it to `true` after confirming key login works.
 - **ryzen uses snap Docker today.** This role installs apt Docker (the standard) and is aimed at the fresh apps/infra nodes; migrating ryzen off snap is a manual step (reinstall Docker, re-point stacks at `/opt/homelab/data`).
 - **NFS performance:** set `nfs_server_host` (in `group_vars/all.yml`) to ryzen's LAN IP rather than a Tailscale name.

@@ -31,6 +31,7 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
       HOSTNAME: 0.0.0.0
       PORT: "3000"
+      PORTFOLIO_REPOSITORY: "${PORTFOLIO_REPOSITORY:-Abhijith126/portfolio}"
       PORTFOLIO_RELEASE: "${PORTFOLIO_RELEASE:-latest}"
     ports:
       - "${PORTFOLIO_PORT:-3000}:3000"
@@ -39,10 +40,12 @@ services:
     command:
       - |
         apk add --no-cache curl unzip su-exec
+        repository="$$PORTFOLIO_REPOSITORY"
+        node -e 'if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$$/.test(process.env.PORTFOLIO_REPOSITORY)) process.exit(1)'
         release="$$PORTFOLIO_RELEASE"
         if [ "$$release" = latest ]; then
           release=$$(node -e "
-            fetch('https://api.github.com/repos/Abhijith126/portfolio/releases/latest')
+            fetch('https://api.github.com/repos/' + process.env.PORTFOLIO_REPOSITORY + '/releases/latest')
               .then(async r => {
                 if (!r.ok) throw new Error('GitHub release lookup: ' + r.status);
                 const j = await r.json();
@@ -55,7 +58,7 @@ services:
           ""|*[!a-zA-Z0-9_.-]*) echo "Invalid release tag" >&2; exit 1 ;;
         esac
         echo "Downloading portfolio release $$release"
-        base="https://github.com/Abhijith126/portfolio/releases/download/$$release"
+        base="https://github.com/$$repository/releases/download/$$release"
         download=$$(mktemp -d)
         cd "$$download"
         curl -fL --retry 3 -o portfolio-build.zip "$$base/portfolio-build.zip"

@@ -1,0 +1,65 @@
+---
+- name: Configure local node names
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^\\S+\\s+{{ item.name }}(?:\\s|$)'
+    line: "{{ item.address }} {{ item.name }}"
+  loop: "{{ bootstrap_hosts }}"
+
+- name: Prepare storage media directories
+  ansible.builtin.file:
+    path: "{{ bootstrap_media }}/{{ item }}"
+    state: directory
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0775"
+  loop: ["Downloads", "Shows", "Movies", "Music", "Files", "Gallery"]
+  when: bootstrap_node == 'storage'
+
+- name: Prepare the shared backup repository directory
+  ansible.builtin.file:
+    path: "{{ bootstrap_backup }}/restic"
+    state: directory
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0770"
+  when:
+    - bootstrap_node == 'storage'
+    - "'restic' not in bootstrap_skip"
+
+- name: Discover this node's application folders
+  ansible.builtin.find:
+    paths: "{{ playbook_dir }}/../stacks/{{ bootstrap_node }}"
+    file_type: directory
+    recurse: false
+  register: bootstrap_stacks
+
+- name: Prepare application data directories
+  ansible.builtin.file:
+    path: "{{ docker_data_root }}/{{ item.path | basename }}"
+    state: directory
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0755"
+  loop: "{{ bootstrap_stacks.files }}"
+  when: (item.path | basename) not in bootstrap_skip
+
+- name: Prepare Pi-hole DNS configuration directory
+  ansible.builtin.file:
+    path: "{{ docker_data_root }}/pihole-unbound/etc-dnsmasq"
+    state: directory
+    mode: "0755"
+  when:
+    - bootstrap_node == 'infra'
+    - "'pihole-unbound' not in bootstrap_skip"
+
+- name: Route the homelab domain to Caddy through Pi-hole
+  ansible.builtin.copy:
+    dest: "{{ docker_data_root }}/pihole-unbound/etc-dnsmasq/05-homelab.conf"
+    mode: "0644"
+    content: |
+      # Local split DNS for the homelab reverse proxy.
+      address=/.{{ bootstrap_domain }}/{{ bootstrap_infra_ip }}
+  when:
+    - bootstrap_node == 'infra'
+    - "'pihole-unbound' not in bootstrap_skip"

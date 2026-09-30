@@ -19,11 +19,20 @@ cd "$repo_root"
 
 check_only=false
 node_root=stacks
+skip=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
     --check)
         check_only=true
         shift
+        ;;
+    --skip)
+        [[ $# -ge 2 ]] || {
+            echo "--skip needs a list" >&2
+            exit 1
+        }
+        skip="$2"
+        shift 2
         ;;
     --node)
         case "${2:-}" in apps | storage | infra) node_root="stacks/$2" ;; *)
@@ -77,6 +86,8 @@ render_stack() {
 generated=0
 if [[ "$check_only" == false ]]; then
     while IFS= read -r example; do
+        stack="$(basename "$(dirname "$example")")"
+        [[ " $skip " == *" $stack "* ]] && continue
         out="$(dirname "$example")/.env"
         render_stack "$example" "$out"
         generated=$((generated + 1))
@@ -88,6 +99,8 @@ fi
 # Verify: every stack has a .env with no unset (CHANGEME) values.
 missing=0
 while IFS= read -r example; do
+    stack="$(basename "$(dirname "$example")")"
+    [[ " $skip " == *" $stack "* ]] && continue
     envf="$(dirname "$example")/.env"
     if [[ ! -f "$envf" ]]; then
         echo "  MISSING  ${envf#./}  (run 'make config' to generate)"

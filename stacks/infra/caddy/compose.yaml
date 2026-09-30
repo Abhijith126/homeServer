@@ -37,6 +37,10 @@ services:
     environment:
       DOMAIN: ${DOMAIN}
       ACME_EMAIL: ${ACME_EMAIL}
+      STORAGE_HOST: ${STORAGE_HOST}
+      APPS_HOST: ${APPS_HOST}
+      INFRA_HOST: ${INFRA_HOST}
+      CADDY_GLOBAL_OPTIONS: ${CADDY_GLOBAL_OPTIONS}
     ports:
       - "80:80"
       - "443:443"

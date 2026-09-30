@@ -57,7 +57,7 @@ main() {
     fi
 
     echo "Deploying $node at $revision"
-    ./scripts/gen-env.sh --node "$node"
+    ./scripts/gen-env.sh --node "$node" --skip "$skip"
     ./scripts/deploy-node.sh "$node" --update --skip "$skip"
 
     # No volumes or running/stopped-container images are removed. This is

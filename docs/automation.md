@@ -12,43 +12,17 @@ The same scripts work on every machine and can be reused in another homelab by c
 
 ## One-time setup on each node
 
-First provision Docker, Compose, the shared networks, and storage mounts using [bootstrap.md](bootstrap.md). Use an existing checkout on main owned by your normal Docker-capable user, or clone one:
+Clone the repository and run its bootstrap script once on each machine:
 
 ```bash
 git clone https://github.com/Abhijith126/homeServer.git ~/homeServer
 cd ~/homeServer
-cp .env.example .env
-chmod 600 .env
-$EDITOR .env
+./scripts/bootstrap-node.sh
 ```
 
-Configure that node's real paths and secrets. The deployment service regenerates only that node's stack .env files from the root .env and committed defaults. Do not set image-version overrides in the root .env unless you deliberately want to override Renovate.
+Choose storage on ryzen, apps on the application node, and infra on the infrastructure node. Provision storage first. The wizard installs prerequisites, configures the host, gathers local configuration and credentials, installs the timer, and starts the first deployment. See [bootstrap.md](bootstrap.md) for supported hosts, optional integrations, and storage/network prerequisites.
 
-On infra, also configure Caddy's cloudflare.env using its example if using DNS-01. Verify the NAS and backup mounts before deploying.
-
-Install once, using the node identifier from the table:
-
-```bash
-# On apps:
-sudo ./scripts/install-auto-deploy.sh apps
-
-# On ryzen:
-sudo ./scripts/install-auto-deploy.sh storage
-
-# On infra:
-sudo ./scripts/install-auto-deploy.sh infra
-```
-
-Run only the appropriate command on each machine. The installer runs deployments as the user invoking sudo, expects the checkout to belong to that user, and installs homelab-deploy.service plus homelab-deploy.timer. Git, make, util-linux (flock), Docker and Compose must be installed. For a private Git remote, configure read-only SSH access for that user first; scheduled Git fetches never prompt for credentials.
-
-The timer checks about every five minutes, with a small stagger between nodes. Start the first deployment immediately:
-
-```bash
-sudo systemctl start homelab-deploy.service
-journalctl -u homelab-deploy.service -f
-```
-
-The unit requires /mnt/nas and /mnt/nfs/backup on apps/infra, and /mnt/nas plus /mnt/hdd2 on ryzen. If using different mount paths, change RequiresMountsFor in the service before the first run, then run sudo systemctl daemon-reload. Ensure these are real configured mounts: Docker must not silently create an empty directory in place of a missing NAS.
+For an already provisioned host, install-auto-deploy.sh remains available separately. Bootstrap supplies its mount paths and skipped stacks automatically.
 
 ## What happens after a merge
 
@@ -97,14 +71,14 @@ sudo systemctl stop homelab-deploy.timer
 sudo systemctl start homelab-deploy.timer
 ```
 
-To skip stacks, use sudo systemctl edit homelab-deploy.service:
+To change skipped stacks, rerun bootstrap. For a manual override, use sudo systemctl edit homelab-deploy.service:
 
 ```ini
 [Service]
 Environment="HOMELAB_SKIP_STACKS=portainer another-stack"
 ```
 
-Then sudo systemctl daemon-reload. Portainer is excluded by default and its Ansible agent is opt-in. It can remain installed as an optional UI, but do not let a second system automatically deploy these same projects. To include its stack, set HOMELAB_SKIP_STACKS to an empty value. Re-run the installer when changing service/timer settings; repository script changes arrive through Git automatically.
+Then sudo systemctl daemon-reload. Portainer is excluded by default and its Ansible agent is opt-in. It can remain installed as an optional UI, but do not let a second system automatically deploy these same projects. To include its stack, set HOMELAB_SKIP_STACKS to an empty value. Bootstrap reinstalls the service/timer when configuration changes; repository script changes arrive through Git automatically.
 
 Revert a version commit in Git to deploy the previous image. For database migrations, consult the application upgrade notes and restore a backup if required.
 
