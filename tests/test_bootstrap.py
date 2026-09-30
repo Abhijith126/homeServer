@@ -119,6 +119,21 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(env["WIREGUARD_PRIVATE_KEY"], "shared-backup-password")
         self.assertEqual(env["WIREGUARD_ADDRESSES"], "10.20.0.2/32")
 
+    def test_existing_standalone_credentials_are_reused(self):
+        config.write_env(self.root / "stacks/apps/homarr/.env", {"HOMARR_SECRET_ENCRYPTION_KEY": "a" * 64})
+        config.write_env(self.root / "stacks/apps/restic/.env", {"RESTIC_PASSWORD": "existing-backup-password"})
+        self.configure("apps")
+        env = config.read_env(self.root / ".env")
+        self.assertEqual(env["HOMARR_SECRET_ENCRYPTION_KEY"], "a" * 64)
+        self.assertEqual(env["RESTIC_PASSWORD"], "existing-backup-password")
+
+    def test_existing_application_data_needs_current_key(self):
+        data = self.root / "existing-data"
+        (data / "homarr").mkdir(parents=True)
+        self.answers["Local application data directory"] = str(data)
+        self.configure("apps")
+        self.assertEqual(config.read_env(self.root / ".env")["HOMARR_SECRET_ENCRYPTION_KEY"], "shared-backup-password")
+
     def test_duplicate_addresses_are_rejected_before_writing_environment(self):
         self.answers["Apps node LAN IPv4"] = "192.168.1.120"
         with self.assertRaisesRegex(ValueError, "different LAN"):
