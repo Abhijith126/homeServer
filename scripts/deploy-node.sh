@@ -1,68 +1,83 @@
 #!/usr/bin/env bash
-#
-# Deploy every stack for a node in one shot.
-#   ./scripts/deploy-node.sh <node> [--skip "stack1 stack2 ..."]
-#
-# Runs `docker compose up -d` in each stacks/<node>/<app>/ that has a compose
-# file and a generated .env. Idempotent — safe to re-run. Stacks without a .env
-# are skipped with a hint to run `make config` first.
-#
+# Deploy a node's stacks. --update pulls/builds images and waits for health.
+# Usage: deploy-node.sh <apps|storage|infra> [--skip "stack1 stack2"] [--update]
 set -uo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root" || exit 1
-
 node="${1:-}"
-if [[ -z "$node" ]]; then
-    echo "usage: $0 <node> [--skip \"stack1 stack2\"]" >&2
+case "$node" in apps | storage | infra) ;; *)
+    echo "usage: $0 <apps|storage|infra> [--skip \"stacks\"] [--update]" >&2
     exit 1
-fi
-
-node_dir="stacks/${node}"
-if [[ ! -d "$node_dir" ]]; then
-    echo "no such node directory: ${node_dir}" >&2
-    exit 1
-fi
-
+    ;;
+esac
+shift
 skip=""
-if [[ "${2:-}" == "--skip" ]]; then
-    skip="${3:-}"
-fi
+update=false
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --skip)
+        [[ $# -ge 2 ]] || {
+            echo "--skip needs a list" >&2
+            exit 1
+        }
+        skip="$2"
+        shift 2
+        ;;
+    --update)
+        update=true
+        shift
+        ;;
+    *)
+        echo "unknown option: $1" >&2
+        exit 1
+        ;;
+    esac
+done
 
-# Ensure the shared docker networks exist first (idempotent).
-./scripts/create-networks.sh
-
-deployed=()
-skipped=()
-failed=()
-
-for dir in "$node_dir"/*/; do
-    stack="$(basename "$dir")"
+dirs=()
+for dir in "stacks/$node"/*/; do
     [[ -f "${dir}compose.yaml" ]] || continue
-
-    if [[ " ${skip} " == *" ${stack} "* ]]; then
-        echo "SKIP  ${stack} (--skip)"
-        skipped+=("$stack")
+    stack="$(basename "$dir")"
+    if [[ " $skip " == *" $stack "* ]]; then
+        echo "SKIP $stack (--skip)"
         continue
     fi
     if [[ ! -f "${dir}.env" ]]; then
-        echo "SKIP  ${stack} (no .env — run 'make config')"
-        skipped+=("$stack")
+        if [[ "$update" == true ]]; then
+            echo "Missing ${dir}.env; run make config" >&2
+            exit 1
+        fi
+        echo "SKIP $stack (no .env)"
         continue
     fi
+    # Validate all selected stacks before changing any containers.
+    (cd "$dir" && docker compose config -q) || exit 1
+    dirs+=("$dir")
+done
+[[ ${#dirs[@]} -gt 0 ]] || {
+    echo "No stacks selected" >&2
+    exit 1
+}
+./scripts/create-networks.sh || exit 1
 
-    echo "==> ${stack}"
-    if (cd "$dir" && docker compose up -d); then
-        deployed+=("$stack")
-    else
-        echo "FAIL  ${stack}"
+failed=()
+for dir in "${dirs[@]}"; do
+    stack="$(basename "$dir")"
+    echo "==> $stack"
+    if [[ "$update" == true ]]; then
+        if ! (cd "$dir" &&
+            docker compose pull --ignore-buildable &&
+            docker compose build --pull &&
+            docker compose up -d --remove-orphans --wait --wait-timeout 300 &&
+            if [[ "$stack" == caddy ]]; then
+                docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile
+            fi); then
+            failed+=("$stack")
+        fi
+    elif ! (cd "$dir" && docker compose up -d); then
         failed+=("$stack")
     fi
 done
-
-echo ""
-echo "deployed: ${deployed[*]:-none}"
-echo "skipped:  ${skipped[*]:-none}"
-echo "failed:   ${failed[*]:-none}"
-
+echo "failed: ${failed[*]:-none}"
 [[ ${#failed[@]} -eq 0 ]]

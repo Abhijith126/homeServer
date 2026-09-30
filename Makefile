@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help validate new-app networks fmt deploy
+.PHONY: help validate new-app networks fmt deploy config config-check auto-deploy auto-deploy-install
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -23,6 +23,12 @@ config-check: ## Verify all stack .env files exist with no unset secrets
 
 deploy: ## Deploy all stacks for a node: make deploy NODE=infra [SKIP="diun caddy"]
 	@./scripts/deploy-node.sh $(NODE) $(if $(SKIP),--skip "$(SKIP)")
+
+auto-deploy: ## Reconcile from main now: make auto-deploy NODE=apps
+	@./scripts/auto-deploy.sh $(NODE) --force
+
+auto-deploy-install: ## Install the timer: sudo make auto-deploy-install NODE=apps
+	@./scripts/install-auto-deploy.sh $(NODE)
 
 fmt: ## Format shell scripts (shfmt -i 4)
 	@shfmt -i 4 -w $$(find scripts stacks -name '*.sh')

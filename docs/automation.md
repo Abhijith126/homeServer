@@ -1,71 +1,115 @@
-# Automated image updates
+# Automated deployment on three nodes
 
-Renovate runs as the free Mend-hosted [GitHub app](https://github.com/apps/renovate). It reads `renovate.json` in this repository and opens dependency PRs. It does not run on a homelab node. Portainer runs on infra and deploys Git stacks to the appropriate Docker environment after changes reach main.
+Renovate opens image-update PRs. Once a PR is merged to main, a systemd timer on each node pulls the Git change and deploys that node's Compose stacks. No inbound webhooks, GitHub runner on the server, or Portainer license is needed.
 
-## Enable Renovate
+| Machine | Deployment node | Directory |
+| --- | --- | --- |
+| apps | apps | stacks/apps |
+| ryzen | storage | stacks/storage |
+| infra | infra | stacks/infra |
 
-1. Install the Renovate GitHub app for Abhijith126 and select only the homeServer repository.
-2. Ensure repository Issues are enabled for the Dependency Dashboard.
-3. Check the Dashboard and any onboarding PR. The repository already contains its configuration; review any proposed replacement before merging.
-4. Confirm the first update PR passes both CI jobs: `validate` and `renovate-config`.
+The same scripts work on every machine and can be reused in another homelab by changing the checkout's Git remote and stack folders.
 
-The app manages its own credentials. No GitHub token or scheduled Renovate Actions workflow is needed. The CI container only validates the configuration; it does not run the update bot.
+## One-time setup on each node
 
-## Update policy
+First provision Docker, Compose, the shared networks, and storage mounts using [bootstrap.md](bootstrap.md). Use an existing checkout on main owned by your normal Docker-capable user, or clone one:
+
+```bash
+git clone https://github.com/Abhijith126/homeServer.git ~/homeServer
+cd ~/homeServer
+cp .env.example .env
+chmod 600 .env
+$EDITOR .env
+```
+
+Configure that node's real paths and secrets. The deployment service regenerates only that node's stack .env files from the root .env and committed defaults. Do not set image-version overrides in the root .env unless you deliberately want to override Renovate.
+
+On infra, also configure Caddy's cloudflare.env using its example if using DNS-01. Verify the NAS and backup mounts before deploying.
+
+Install once, using the node identifier from the table:
+
+```bash
+# On apps:
+sudo ./scripts/install-auto-deploy.sh apps
+
+# On ryzen:
+sudo ./scripts/install-auto-deploy.sh storage
+
+# On infra:
+sudo ./scripts/install-auto-deploy.sh infra
+```
+
+Run only the appropriate command on each machine. The installer runs deployments as the user invoking sudo, expects the checkout to belong to that user, and installs homelab-deploy.service plus homelab-deploy.timer. Git, make, util-linux (flock), Docker and Compose must be installed. For a private Git remote, configure read-only SSH access for that user first; scheduled Git fetches never prompt for credentials.
+
+The timer checks about every five minutes, with a small stagger between nodes. Start the first deployment immediately:
+
+```bash
+sudo systemctl start homelab-deploy.service
+journalctl -u homelab-deploy.service -f
+```
+
+The unit requires /mnt/nas and /mnt/nfs/backup on apps/infra, and /mnt/nas plus /mnt/hdd2 on ryzen. If using different mount paths, change RequiresMountsFor in the service before the first run, then run sudo systemctl daemon-reload. Ensure these are real configured mounts: Docker must not silently create an empty directory in place of a missing NAS.
+
+## What happens after a merge
+
+1. Fetch main and fast-forward the local checkout. Tracked local edits or a divergent branch stop deployment.
+2. If the Git revision, root .env, or Caddy token file changed, regenerate node-specific environment files. A failed attempt is retried at the next timer run.
+3. Discover all Compose stacks in that node's folder and validate them before changing containers.
+4. Pull registry images, build local images such as Caddy, and run Compose up with --remove-orphans and --wait. Changed containers are recreated; unchanged containers stay running. Caddy's mounted configuration is explicitly reloaded.
+5. After all selected stacks are running or healthy, prune unused Docker images created more than seven days ago and record the successful revision.
+
+The prune is host-wide and uses Docker's image creation timestamp, not time since last use. Images referenced by running or stopped containers are retained. Volumes and data directories are never pruned. Registry images removed by cleanup can be pulled again during rollback.
+
+A new folder under stacks/<node>/<app> is discovered automatically on the next merge; no new deployment entry is needed. Use the existing new-app scaffolder and provide any new secrets in the node's root .env. Removed services within a Compose project are cleaned up as orphans. Removing a whole stack folder does not delete that project's containers or data; retire whole stacks deliberately with Compose down, without -v.
+
+Deployments across nodes are independent and are not an atomic transaction. If one stack fails, other stacks may already have updated. The node records no successful revision and skips image cleanup, then retries. It does not automatically roll back database migrations.
+
+## Renovate update policy
+
+Install the free hosted [Renovate GitHub app](https://github.com/apps/renovate) with access to homeServer and select Renovate Only / Scan and Alert. It reads renovate.json; no update-bot container or GitHub token is needed on the nodes.
 
 | Update | Merge policy |
 | --- | --- |
-| Selected application patch and digest updates | Renovate merges after successful checks |
-| Initial image digest pinning | Review |
-| Minor and major versions | Review |
-| Immich and database dependencies | Review together against upstream release notes |
-| Portainer server and agents | Review together; apply agent changes with Ansible |
-| Caddy local image | Review and rebuild on infra |
-| Backups, qBittorrent, Home Assistant, other images | Review |
+| Application patches and digest updates | Auto-merge after CI, except Immich/backups |
+| Beszel hub and agent patches/digests | Auto-merge together after CI |
+| Initial digest pins | Review |
+| Minor and major upgrades | Review |
+| Immich/database, backups, Caddy, Portainer and other infrastructure | Review |
 
-The automatic list is Bazarr, Lidarr, Prowlarr, Radarr, Sonarr, Homarr, Uptime Kuma, FileBrowser, Beszel hub/agent, and the portfolio Node runtime. All other dependencies require review. Beszel hub and agent updates are grouped.
+All existing Compose stacks are tracked, including Sonarr, Radarr, Lidarr, Bazarr, Prowlarr, Homarr, Home Assistant, Jellyfin, FileBrowser, Uptime Kuma, qBittorrent/Gluetun, and portfolio. LinuxServer packaging revisions and qBittorrent's libtorrent compatibility suffix are tracked. Custom managers track Immich's version variable, Ansible's optional Portainer agent version, and Caddy's local build version.
 
-Renovate may create update branches and automatically merge from midnight until 05:00 Europe/Amsterdam. The hosted service runs on its own cadence; this is an allowed window, not an exact execution time. Manual merges can happen outside the window. Portainer polling is independent of this window.
+Renovate's update/auto-merge window is midnight to 05:00 Europe/Amsterdam. Hosted runs have their own cadence. Manual merges deploy whenever each node next polls. CI validates configuration, lint, and secrets, but does not test real application startup or data migrations. Make validate and renovate-config required checks in a main branch rule if you want GitHub to enforce them for manual merges too.
 
-Registry images are pinned to digests as well as tags. LinuxServer version and packaging revisions are tracked separately, and qBittorrent keeps its libtorrent compatibility suffix. Custom managers track the Immich version variable, Ansible's Portainer agent version, and every Caddy build/tag version.
+## Everyday operations
 
-CI validates Compose, lint, secrets, and the Renovate configuration. It does not test application startup or data migrations. Keep backups and check service health after deployment. For additional enforcement, make both CI jobs required checks in a GitHub branch rule for main.
+```bash
+# Force a retry/reconcile even when the recorded revision matches:
+make auto-deploy NODE=apps
 
-## Configure Portainer GitOps
+# See the timer and deployed commit:
+systemctl list-timers homelab-deploy.timer
+cat .deploy-state/apps/revision
 
-Use Portainer Business Edition for automatic Git polling. Manage all three environments from the infra Portainer server; apps and ryzen use agents.
+# Pause deployments:
+sudo systemctl stop homelab-deploy.timer
 
-For each stack:
+# Resume:
+sudo systemctl start homelab-deploy.timer
+```
 
-1. Select its target environment, then **Stacks → Add stack → Repository**.
-2. Use `https://github.com/Abhijith126/homeServer` and reference `refs/heads/main`.
-3. Set the Compose path from the table below. Keep the existing stack/project name.
-4. Run `make config` in your local checkout using your real root `.env`, then import that stack's generated `.env` into Portainer's environment variables. Never commit it.
-5. Enable **GitOps updates / Automatic updates**, choose **Polling**, and set an interval such as 5 minutes.
-6. Enable **Re-pull image**. Leave **Force redeployment** disabled.
-7. Deploy and check container health, ports, and persistent mounts before enabling the next stack.
+To skip stacks, use sudo systemctl edit homelab-deploy.service:
 
-| Environment | Stack | Compose path |
-| --- | --- | --- |
-| apps | portfolio | `stacks/apps/portfolio/compose.yaml` |
-| apps | sonarr | `stacks/apps/sonarr/compose.yaml` |
-| apps | uptime-kuma | `stacks/apps/uptime-kuma/compose.yaml` |
-| ryzen | immich | `stacks/storage/immich/compose.yaml` |
+```ini
+[Service]
+Environment="HOMELAB_SKIP_STACKS=portainer another-stack"
+```
 
-Repeat for other stacks using their corresponding paths. If the repository is private, configure read access in Portainer. GitHub needs no inbound connection to the nodes for polling.
+Then sudo systemctl daemon-reload. Portainer is excluded by default and its Ansible agent is opt-in. It can remain installed as an optional UI, but do not let a second system automatically deploy these same projects. To include its stack, set HOMELAB_SKIP_STACKS to an empty value. Re-run the installer when changing service/timer settings; repository script changes arrive through Git automatically.
 
-When migrating an existing CLI stack, schedule a short outage and stop/remove its containers before deploying the Git stack; preserve all volumes and bind mount paths. Do not delete data volumes or deploy a second copy of the same application.
+Revert a version commit in Git to deploy the previous image. For database migrations, consult the application upgrade notes and restore a backup if required.
 
-Portainer stores imported variables separately from Git. Changes to `.env.example` do not update a deployed stack's variables. For Immich version changes, regenerate and re-import its environment before redeploying; check the upstream Compose and database requirements first.
+## Portfolio release ZIPs
 
-Caddy needs a local Cloudflare-enabled build and its Caddyfile/token files. Keep its documented local deployment procedure until those files/builds are explicitly configured in Portainer. Renovate updates the Dockerfile default, Compose build argument, and local image tag together; on infra rebuild with `docker compose build --pull caddy` before deployment. Portainer server updates also require a deliberate maintenance operation because it manages its own deployment.
+Renovate tracks portfolio's Node image. Its existing startup script downloads the standalone ZIP configured by PORTFOLIO_RELEASE. A release published only in the portfolio repository does not change homeServer or restart its container.
 
-## Portfolio releases
-
-The portfolio stack downloads the latest verified standalone release ZIP on container startup. Renovate updates its Node container image; it does not track portfolio release ZIPs.
-
-A new release in the portfolio repository alone does not change homeServer and therefore does not trigger Portainer Git polling. To deploy a new portfolio release, redeploy/recreate the portfolio container in Portainer, or run `docker compose up -d --force-recreate portfolio` from its stack directory. Fully automatic application-release deployment needs an additional release notification or a version update in homeServer.
-
-## Rollback
-
-Revert the image update commit and let Portainer reconcile the previous image. For environment changes, restore the previous imported variables too. Database migrations may require restoring a backup; an image revert alone cannot undo them. See [upgrade.md](upgrade.md).
+To deploy that release through this mechanism, update PORTFOLIO_RELEASE to the exact tag in the committed portfolio .env.example, then merge. Remove the root .env PORTFOLIO_RELEASE=latest override first, so the committed value takes effect. Or manually recreate the portfolio container. Automatic cross-repository release propagation requires a separate release-PR integration.

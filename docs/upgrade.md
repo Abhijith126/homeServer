@@ -2,7 +2,7 @@
 
 ## Philosophy
 
-Images are **pinned** in git. The hosted Renovate GitHub app proposes tag and digest updates; selected application patch and digest updates can merge after successful CI, while other changes require review. Portainer Git stacks deploy merged changes when automatic polling is configured. See [automation.md](automation.md) for activation, policy, and deployment limitations. **Diun** continues to provide image notifications.
+Images are **pinned** in git. The hosted Renovate GitHub app proposes tag and digest updates; application patch and digest updates (except Immich and backups) can merge after successful CI, while other changes require review. Each node's systemd timer deploys merged changes and cleans up unused images after successful deployment. See [automation.md](automation.md) for activation, policy, and deployment limitations. **Diun** continues to provide image notifications.
 
 ## Upgrade a single stack
 
@@ -14,7 +14,7 @@ docker compose up -d
 docker image prune -f          # optional: reclaim space
 ```
 
-Commit the tag bump so git stays the source of truth. If you use Portainer Git stacks, committing + pushing triggers the update (webhook/polling).
+Commit the tag bump so git stays the source of truth. With the deployment timer installed, committing and pushing to main deploys the change at the next node poll.
 
 ## Finding the new tag
 
@@ -60,4 +60,4 @@ git revert <commit>          # or edit the tag back
 docker compose up -d
 ```
 
-Portainer BE also offers per-stack rollback in the UI. For data-level rollback, restore from a backup (see [disaster-recovery.md](disaster-recovery.md)).
+For data-level rollback, restore from a backup (see [disaster-recovery.md](disaster-recovery.md)).

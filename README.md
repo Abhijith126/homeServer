@@ -56,6 +56,10 @@ Validate everything locally (mirrors CI):
 make validate
 ```
 
+## Automatic deployment
+
+Renovate proposes image updates. After a merge to main, each node's systemd timer deploys every Compose stack in its own folder and prunes unused images after successful startup checks. Install once per node using [docs/automation.md](docs/automation.md). Portainer is optional.
+
 ## Conventions
 
 Every stack follows one contract — naming, volumes, secrets, health checks, labels, backups. See **[docs/conventions.md](docs/conventions.md)**.
@@ -69,7 +73,7 @@ Every stack follows one contract — naming, volumes, secrets, health checks, la
 | [hardware.md](docs/hardware.md) | Nodes, specs, storage layout |
 | [bootstrap.md](docs/bootstrap.md) | Provision a host & deploy stacks |
 | [upgrade.md](docs/upgrade.md) | Update workflow & rollback |
-| [automation.md](docs/automation.md) | Hosted Renovate setup, update policy & Portainer GitOps |
+| [automation.md](docs/automation.md) | Renovate, automatic deployment on three nodes & image cleanup |
 | [disaster-recovery.md](docs/disaster-recovery.md) | Backups & rebuild-from-zero runbook |
 | [conventions.md](docs/conventions.md) | The platform contract every stack follows |
 
