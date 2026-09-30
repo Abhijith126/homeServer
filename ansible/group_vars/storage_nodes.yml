@@ -14,5 +14,5 @@ ufw_allow_udp:
   - 111
   - 2049
 
-# ryzen is managed remotely by the Portainer BE server (on infra) via the agent.
-enable_portainer_agent: true
+# Portainer is an optional UI; enable the agent explicitly if wanted.
+enable_portainer_agent: false

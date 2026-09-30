@@ -31,18 +31,17 @@ homelab/
 
 ## Quick start
 
+Clone once on each Debian 12+ / Ubuntu 24.04+ node and run:
+
 ```bash
-# 1. Provision a host (docker, nfs, tailscale, firewall, portainer-agent)
-cd ansible && ansible-galaxy collection install -r requirements.yml
-ansible-playbook site.yml --limit apps -e tailscale_authkey=tskey-...
-
-# 2. Configure once — set secrets in the root .env, then generate every stack's .env
-cd .. && cp .env.example .env && $EDITOR .env
-make config
-
-# 3. Deploy a stack
-cd stacks/apps/uptime-kuma && docker compose up -d
+git clone https://github.com/Abhijith126/homeServer.git ~/homeServer
+cd ~/homeServer
+./scripts/bootstrap-node.sh
 ```
+
+Choose storage, apps, or infra when prompted. Run storage first. The script gathers local settings, installs prerequisites, provisions Docker/NFS/firewall, configures services, and enables deployment from Git. Rerunning it preserves existing secrets.
+
+Someone else can fork this repo and run the same script with their own machine addresses, paths, domain, and credentials. Read [bootstrap.md](docs/bootstrap.md) for prerequisites and optional integrations.
 
 Scaffold a new service:
 

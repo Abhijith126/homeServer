@@ -1,0 +1,27 @@
+---
+# Local provisioning for scripts/bootstrap-node.sh. No SSH inventory edits.
+- name: Bootstrap this homelab node
+  hosts: all
+  become: true
+  roles:
+    - common
+    - docker
+  tasks:
+    - name: Configure optional Tailscale
+      ansible.builtin.import_role:
+        name: tailscale
+      when: enable_tailscale | bool
+
+    - name: Configure storage exports
+      ansible.builtin.import_role:
+        name: nfs_server
+      when: bootstrap_node == 'storage'
+
+    - name: Configure client storage mounts
+      ansible.builtin.import_role:
+        name: nfs_client
+      when: bootstrap_node != 'storage'
+
+    - name: Prepare application directories and local DNS
+      ansible.builtin.import_role:
+        name: bootstrap

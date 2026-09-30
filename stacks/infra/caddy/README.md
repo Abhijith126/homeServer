@@ -8,6 +8,10 @@ Single entry point for every service. Routes live in a static **`Caddyfile`** wi
 
 `app.${DOMAIN}` → `reverse_proxy <node>:<port>`. The node hostnames `ryzen` / `apps` / `infra` must resolve — via **Tailscale MagicDNS** or `/etc/hosts` on the infra node.
 
+## One-command setup
+
+From the repository root on infra, run `./scripts/bootstrap-node.sh infra`. It supplies node LAN addresses, domain, email, and either internal TLS or Cloudflare DNS-01 credentials. It preserves an existing Cloudflare token. Routes use `STORAGE_HOST`, `APPS_HOST`, and `INFRA_HOST` from the generated environment; the root domain proxies portfolio on apps port 3000.
+
 ## Configuration
 
 | Variable     | Description                          | Example            |

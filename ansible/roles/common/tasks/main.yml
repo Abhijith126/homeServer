@@ -6,6 +6,7 @@
 - name: Install base packages
   ansible.builtin.apt:
     name:
+      - python3-requests
       - git
       - make
       - util-linux
