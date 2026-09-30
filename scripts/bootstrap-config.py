@@ -109,6 +109,14 @@ def configure(node="", root=ROOT):
         raise ValueError("This checkout is already configured for a different node")
     env = read_env(root / ".env.example")
     env.update(read_env(root / ".env"))
+    # Reuse credentials from standalone stacks when adopting an existing node.
+    vpn_keys = {"VPN_TYPE", "VPN_SERVICE_PROVIDER", "SERVER_COUNTRIES",
+                "WIREGUARD_PRIVATE_KEY", "WIREGUARD_ADDRESSES"}
+    for example in sorted((root / "stacks" / node).glob("*/.env.example")):
+        saved = read_env(example.parent / ".env")
+        for key, default in read_env(example).items():
+            if ("CHANGEME" in default or key in vpn_keys) and not usable(env.get(key, "")) and usable(saved.get(key, "")):
+                env[key] = saved[key]
     print(f"\nConfiguring {node}. Existing credentials are preserved.")
     print("Provision storage first, then apps and infra.")
     addresses = {}
@@ -148,7 +156,7 @@ def configure(node="", root=ROOT):
     skipped = set(previous.get("bootstrap_skip", ["portainer"]))
     for stack, label, configured in [
         ("restic", "Enable encrypted backups", usable(env.get("RESTIC_PASSWORD", "")) or "restic" not in skipped),
-        ("qbittorrent", "Enable qBittorrent with your VPN account", usable(env.get("OPENVPN_PASSWORD", ""))),
+        ("qbittorrent", "Enable qBittorrent with your VPN account", usable(env.get("OPENVPN_PASSWORD", "")) or usable(env.get("WIREGUARD_PRIVATE_KEY", ""))),
         ("diun", "Enable Diun SMTP notifications", usable(env.get("SMTP_PASSWORD", ""))),
         ("beszel-agent", "Enable Beszel agent (requires the hub's public key)", usable(env.get("BESZEL_AGENT_KEY", ""))),
     ]:
@@ -207,7 +215,13 @@ def configure(node="", root=ROOT):
             if "CHANGEME" in value:
                 if key in {"OPENVPN_USER", "OPENVPN_PASSWORD"} and env.get("VPN_TYPE") == "wireguard":
                     continue
-                env[key] = credential(key, env.get(key, ""), key in generated)
+                can_generate = key in generated
+                protected_data = {"DB_PASSWORD": "immich", "HOMARR_SECRET_ENCRYPTION_KEY": "homarr"}
+                if key in protected_data and (Path(data) / protected_data[key]).exists():
+                    can_generate = False
+                    if not usable(env.get(key, "")):
+                        print(f"Existing {protected_data[key]} data detected; enter its current {key}.")
+                env[key] = credential(key, env.get(key, ""), can_generate)
     # Optional Tailscale onboarding; the key is removed when the wrapper exits.
     auth_key = getpass.getpass("Optional Tailscale auth key (blank to keep current connection or skip): ")
     distro = read_env(Path("/etc/os-release"))
