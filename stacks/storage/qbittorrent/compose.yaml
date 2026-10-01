@@ -56,7 +56,7 @@ services:
 
   qbittorrent:
     <<: *common
-    image: lscr.io/linuxserver/qbittorrent:5.2.3_v2.0.13-ls469
+    image: lscr.io/linuxserver/qbittorrent:5.2.3_v2.0.13-ls470@sha256:b6ab43fe86039e5bdd3cc0b59b946414fcff0c8183e93636e6cb438fdac45028
     container_name: qbittorrent
     depends_on:
       - gluetun
