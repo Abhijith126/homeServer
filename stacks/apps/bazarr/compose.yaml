@@ -20,7 +20,7 @@ x-common: &common
 services:
   bazarr:
     <<: *common
-    image: lscr.io/linuxserver/bazarr:v1.6.0-ls356
+    image: lscr.io/linuxserver/bazarr:v1.6.2-ls366@sha256:8b30e81c4aec2991f469e78fae8afaa89ecc9b21a80e3897f50427216b55470c
     container_name: bazarr
     env_file:
       - path: .env
