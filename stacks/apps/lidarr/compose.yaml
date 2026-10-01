@@ -20,7 +20,7 @@ x-common: &common
 services:
   lidarr:
     <<: *common
-    image: lscr.io/linuxserver/lidarr:3.1.0.4875-ls36
+    image: lscr.io/linuxserver/lidarr:3.1.0.4875-ls42@sha256:044d616beb43c5e7810991242c6a9c42b93ff238c8c0850684939634ea751208
     container_name: lidarr
     env_file:
       - path: .env
