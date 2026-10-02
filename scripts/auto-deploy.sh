@@ -51,6 +51,11 @@ main() {
         fi
     } | sha256sum | cut -d ' ' -f 1)"
     [[ ! -f "$state_dir/success" ]] || previous="$(cat "$state_dir/success")"
+    # Host-wide image cleanup, including checks with no new revision.
+    # Images referenced by running or stopped containers are retained.
+    echo "Removing unused images before deployment"
+    docker image prune --all --force
+
     if [[ "$fingerprint" == "$previous" && "${2:-}" != --force ]]; then
         echo "Already deployed $revision"
         return 0
@@ -58,11 +63,19 @@ main() {
 
     echo "Deploying $node at $revision"
     ./scripts/gen-env.sh --node "$node" --skip "$skip"
-    ./scripts/deploy-node.sh "$node" --update --skip "$skip"
+    local deploy_status=0 cleanup_status=0
+    ./scripts/deploy-node.sh "$node" --update --skip "$skip" || deploy_status=$?
 
-    # No volumes or running/stopped-container images are removed. This is
-    # host-wide: prune unused images whose creation time is over seven days old.
-    docker image prune --all --force --filter "until=168h"
+    # Also clean up after failed deployment attempts; never remove containers,
+    # volumes, or images still referenced by containers.
+    echo "Removing unused images after deployment"
+    docker image prune --all --force || cleanup_status=$?
+    if [[ "$deploy_status" -ne 0 ]]; then
+        return "$deploy_status"
+    fi
+    if [[ "$cleanup_status" -ne 0 ]]; then
+        return "$cleanup_status"
+    fi
     printf '%s\n' "$fingerprint" >"$state_dir/success.tmp"
     mv "$state_dir/success.tmp" "$state_dir/success"
     printf '%s\n' "$revision" >"$state_dir/revision"
