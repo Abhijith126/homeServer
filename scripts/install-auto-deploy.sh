@@ -18,7 +18,7 @@ run_user="${SUDO_USER:-root}"
     echo "Use a checkout path without spaces" >&2
     exit 1
 }
-for command in git docker flock make; do
+for command in git docker flock make python3; do
     command -v "$command" >/dev/null || {
         echo "Install $command first" >&2
         exit 1
@@ -37,8 +37,23 @@ mounts="/mnt/nas /mnt/nfs/backup"
 
 shift
 skip="portainer"
+schedule="weekly"
+update_time="03:00"
+timezone="Europe/Amsterdam"
 while [[ $# -gt 0 ]]; do
     case "$1" in
+    --schedule)
+        schedule="${2:?--schedule needs 5min, hourly, daily, weekly, or monthly}"
+        shift 2
+        ;;
+    --time)
+        update_time="${2:?--time needs HH:MM}"
+        shift 2
+        ;;
+    --timezone)
+        timezone="${2:?--timezone needs an IANA timezone}"
+        shift 2
+        ;;
     --mounts)
         mounts="${2:?--mounts needs paths}"
         shift 2
@@ -62,6 +77,10 @@ done
     exit 1
 }
 
+# Validate before touching the installed units.
+timer_config="$(python3 "$repo_root/scripts/deploy-schedule.py" \
+    --schedule "$schedule" --time "$update_time" --timezone "$timezone")"
+
 cat >/etc/systemd/system/homelab-deploy.service <<EOF
 [Unit]
 Description=Deploy homelab Compose stacks from Git
@@ -81,21 +100,11 @@ ExecStart=$repo_root/scripts/auto-deploy.sh $node
 TimeoutStartSec=45min
 UMask=0077
 EOF
-cat >/etc/systemd/system/homelab-deploy.timer <<'EOF'
-[Unit]
-Description=Check homelab Git updates every five minutes
-
-[Timer]
-OnActiveSec=2min
-OnUnitInactiveSec=5min
-RandomizedDelaySec=30s
-Unit=homelab-deploy.service
-
-[Install]
-WantedBy=timers.target
-EOF
+printf '%s\n' "$timer_config" >/etc/systemd/system/homelab-deploy.timer
 systemctl daemon-reload
-systemctl enable --now homelab-deploy.timer
-echo "Installed for $node. First check in about two minutes."
+systemctl enable homelab-deploy.timer
+systemctl restart homelab-deploy.timer
+echo "Installed for $node: $schedule ($timezone, calendar time $update_time)."
+systemctl list-timers homelab-deploy.timer --no-pager
 echo "Run now: sudo systemctl start homelab-deploy.service"
 echo "Logs: journalctl -u homelab-deploy.service -f"
