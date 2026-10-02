@@ -30,7 +30,7 @@ tailscale_apt_release: "{{ ansible_distribution_release }}"
 # ── Portainer agent (apps & storage; infra runs the BE server) ──
 # Optional UI: enable explicitly if you use Portainer. Direct Git deployment needs no agent.
 enable_portainer_agent: false
-portainer_agent_version: "2.21.5"   # match the Portainer BE server (stacks/infra/portainer)
+portainer_agent_version: "2.45.1"   # match the Portainer BE server (stacks/infra/portainer)
 
 # ── NFS ──
 # Use ryzen's LAN IP, not the hostname: NFS runs over the LAN, and ryzen isn't

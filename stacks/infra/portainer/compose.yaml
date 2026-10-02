@@ -24,7 +24,7 @@ x-common: &common
 services:
   portainer:
     <<: *common
-    image: portainer/portainer-ee:2.21.5   # match the agent version in ansible group_vars
+    image: portainer/portainer-ee:2.45.1@sha256:0cd22f754ac52fcfceb362d5ce8f47ee23a5f6427484db17ebfaa4c8a00f7718   # match the agent version in ansible group_vars
     container_name: portainer
     env_file:
       - path: .env
