@@ -66,6 +66,10 @@ for dir in "${dirs[@]}"; do
     stack="$(basename "$dir")"
     echo "==> $stack"
     if [[ "$update" == true ]]; then
+        if [[ "$stack" == immich ]] && ! python3 "$repo_root/scripts/immich-backup.py" "$dir" --pre-update; then
+            failed+=("$stack")
+            continue
+        fi
         if ! (cd "$dir" &&
             docker compose pull --ignore-buildable &&
             docker compose build --pull &&

@@ -31,12 +31,10 @@ homelab/
 
 ## Quick start
 
-Clone once on each Debian 12+ / Ubuntu 24.04+ node and run:
+Run once on each Debian 12+ / Ubuntu 24.04+ node as your normal sudo user (requires curl):
 
 ```bash
-git clone https://github.com/Abhijith126/homeServer.git ~/homeServer
-cd ~/homeServer
-./scripts/bootstrap-node.sh
+bash <(curl -fsSL https://raw.githubusercontent.com/Abhijith126/homeServer/main/scripts/setup.sh) --schedule weekly
 ```
 
 Choose storage, apps, or infra when prompted. Run storage first. The script gathers local settings, installs prerequisites, provisions Docker/NFS/firewall, configures services, and enables deployment from Git. Rerunning it preserves existing secrets.

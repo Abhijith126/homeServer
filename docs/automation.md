@@ -12,12 +12,10 @@ The same scripts work on every machine and can be reused in another homelab by c
 
 ## One-time setup on each node
 
-Clone the repository and run its bootstrap script once on each machine:
+Run this command once on each machine (requires curl):
 
 ```bash
-git clone https://github.com/Abhijith126/homeServer.git ~/homeServer
-cd ~/homeServer
-./scripts/bootstrap-node.sh
+bash <(curl -fsSL https://raw.githubusercontent.com/Abhijith126/homeServer/main/scripts/setup.sh) --schedule weekly
 ```
 
 Choose storage on ryzen, apps on the application node, and infra on the infrastructure node. Provision storage first. The wizard installs prerequisites, configures the host, gathers local configuration and credentials, installs the timer, and starts the first deployment. See [bootstrap.md](bootstrap.md) for supported hosts, optional integrations, and storage/network prerequisites.
@@ -29,7 +27,7 @@ For an already provisioned host, install-auto-deploy.sh remains available separa
 1. Fetch main and fast-forward the local checkout. Tracked local edits or a divergent branch stop deployment.
 2. If the Git revision, root .env, or Caddy token file changed, regenerate node-specific environment files. A failed attempt is retried at the next timer run.
 3. Discover all Compose stacks in that node's folder and validate them before changing containers.
-4. Pull registry images, build local images such as Caddy, and run Compose up with --remove-orphans and --wait. Changed containers are recreated; unchanged containers stay running. Caddy's mounted configuration is explicitly reloaded.
+4. Back up an existing Immich database; abort that stack if the backup fails. Pull registry images, build local images such as Caddy, and run Compose up with --remove-orphans and --wait. Changed containers are recreated; unchanged containers stay running. Caddy's mounted configuration is explicitly reloaded.
 5. After all selected stacks are running or healthy, prune unused Docker images created more than seven days ago and record the successful revision.
 
 The prune is host-wide and uses Docker's image creation timestamp, not time since last use. Images referenced by running or stopped containers are retained. Volumes and data directories are never pruned. Registry images removed by cleanup can be pulled again during rollback.
@@ -44,11 +42,11 @@ Install the free hosted [Renovate GitHub app](https://github.com/apps/renovate) 
 
 | Update | Merge policy |
 | --- | --- |
-| Application patches and digest updates | Auto-merge after CI, except Immich/backups |
-| Beszel hub and agent patches/digests | Auto-merge together after CI |
-| Initial digest pins | Review |
-| Minor and major upgrades | Review |
-| Immich/database, backups, Caddy, Portainer and other infrastructure | Review |
+| Docker minor/patch-only batch | Auto-merge after successful CI |
+| Major, digest, or initial pin in the batch | Review the whole batch |
+| Immich PostgreSQL or Valkey changes | Review the whole batch against Immich upstream Compose |
+
+All Docker updates share one PR. GitHub Actions updates remain separate. Immich app minor/patch updates are eligible for auto-merge; both app containers use the same committed IMMICH_VERSION.
 
 All existing Compose stacks are tracked, including Sonarr, Radarr, Lidarr, Bazarr, Prowlarr, Homarr, Home Assistant, Jellyfin, FileBrowser, Uptime Kuma, qBittorrent/Gluetun, and portfolio. LinuxServer packaging revisions and qBittorrent's libtorrent compatibility suffix are tracked. Custom managers track Immich's version variable, Ansible's optional Portainer agent version, and Caddy's local build version.
 
@@ -71,7 +69,7 @@ sudo systemctl stop homelab-deploy.timer
 sudo systemctl start homelab-deploy.timer
 ```
 
-To change skipped stacks, rerun bootstrap. For a manual override, use sudo systemctl edit homelab-deploy.service:
+To change skipped stacks, run ./scripts/setup.sh --reconfigure. For a manual override, use sudo systemctl edit homelab-deploy.service:
 
 ```ini
 [Service]
@@ -87,3 +85,23 @@ Revert a version commit in Git to deploy the previous image. For database migrat
 Renovate tracks portfolio's Node image. Its existing startup script downloads the standalone ZIP configured by PORTFOLIO_RELEASE. A release published only in the portfolio repository does not change homeServer or restart its container.
 
 To deploy that release through this mechanism, update PORTFOLIO_RELEASE to the exact tag in the committed portfolio .env.example, then merge. Remove the root .env PORTFOLIO_RELEASE=latest override first, so the committed value takes effect. Or manually recreate the portfolio container. Automatic cross-repository release propagation requires a separate release-PR integration.
+
+## Update schedule
+
+On an already bootstrapped node, the same setup command changes only the schedule and preserves credentials. From its checkout:
+
+```bash
+./scripts/setup.sh --schedule daily --time 03:00
+./scripts/setup.sh --schedule weekly --time 03:00
+./scripts/setup.sh --schedule monthly --time 03:00
+```
+
+Weekly means Monday; monthly means the first of the month. Times use the node's configured timezone (Europe/Amsterdam by default), with up to 30 seconds of jitter. Hourly and 5min are also supported; --time applies only to daily/weekly/monthly. Calendar timers catch up after downtime. Initial bootstrap deploys immediately. Failed updates retry at the next scheduled check; manually retry with sudo systemctl start homelab-deploy.service. Setup saves the schedule per node in .bootstrap/vars.json. A failed setup can leave the timer paused; rerun setup after fixing the error.
+
+## Immich updates
+
+The committed stacks/storage/immich/.env.example supplies IMMICH_VERSION to both server and machine-learning. Remove an IMMICH_VERSION override from the node's root .env if you want Renovate's committed version to take effect. Do not replace it with latest or release.
+
+Before any scheduled reconciliation of an existing Immich stack, a database dump is written to NFS_BACKUP/immich. Only successful dumps become .sql.gz archives; seven are retained. A failed dump or stopped existing database blocks that stack's update. A fresh installation with an empty database directory needs no dump. Photos are not included: back up IMMICH_LIBRARY separately; RAID is not a backup.
+
+PostgreSQL/vector extensions and Valkey must match Immich's upstream requirements. Their updates require review even when nominally minor or patch. Read release notes for app upgrades too. Database migrations are not automatically reversible: do not downgrade an Immich image to recover a failed upgrade. Restore a compatible database backup using the instructions for that release, along with photo files if needed.
