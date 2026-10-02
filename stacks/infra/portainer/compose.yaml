@@ -40,7 +40,6 @@ services:
       homelab.node: "infra"
       homelab.stack: "portainer"
       homelab.category: "management"
-      diun.enable: "true"
     networks:
       - default
 

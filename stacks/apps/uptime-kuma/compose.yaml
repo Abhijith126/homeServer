@@ -41,7 +41,6 @@ services:
       homelab.node: "apps"
       homelab.stack: "uptime-kuma"
       homelab.category: "monitoring"
-      diun.enable: "true"
     networks:
       - default
 

@@ -38,4 +38,3 @@ services:
       homelab.managed: "true"
       homelab.stack: "beszel-agent"
       homelab.category: "monitoring"
-      diun.enable: "true"

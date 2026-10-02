@@ -49,7 +49,6 @@ services:
       homelab.node: "storage"
       homelab.stack: "immich"
       homelab.category: "media"
-      diun.enable: "true"
 
   immich-machine-learning:
     <<: *common
@@ -68,7 +67,6 @@ services:
       homelab.node: "storage"
       homelab.stack: "immich"
       homelab.category: "media"
-      diun.enable: "true"
 
   redis:
     <<: *common

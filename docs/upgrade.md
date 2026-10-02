@@ -2,7 +2,7 @@
 
 ## Philosophy
 
-Images are **pinned** in git. The hosted Renovate GitHub app proposes tag and digest updates; application patch and digest updates (except Immich and backups) can merge after successful CI, while other changes require review. Each node's systemd timer deploys merged changes and cleans up unused images after successful deployment. See [automation.md](automation.md) for activation, policy, and deployment limitations. **Diun** continues to provide image notifications.
+Images are **pinned** in git. The hosted Renovate GitHub app proposes tag and digest updates; application patch and digest updates (except Immich and backups) can merge after successful CI, while other changes require review. Each node's systemd timer deploys merged changes and cleans up unused images after successful deployment. See [automation.md](automation.md) for activation, policy, and deployment limitations. Deployment summaries are emailed by the updater.
 
 ## Upgrade a single stack
 
@@ -18,7 +18,7 @@ Commit the tag bump so git stays the source of truth. With the deployment timer 
 
 ## Finding the new tag
 
-Diun's email names the image. Or check the registry — the same way tags were originally pinned (Docker Hub / GHCR tags API).
+Renovate's PR names the image. Or check the registry — the same way tags were originally pinned (Docker Hub / GHCR tags API).
 
 ## Special cases
 

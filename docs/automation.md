@@ -106,3 +106,13 @@ The committed stacks/storage/immich/.env.example supplies IMMICH_VERSION to both
 Before any scheduled reconciliation of an existing Immich stack, a database dump is written to NFS_BACKUP/immich. Only successful dumps become .sql.gz archives; seven are retained. A failed dump or stopped existing database blocks that stack's update. A fresh installation with an empty database directory needs no dump. Photos are not included: back up IMMICH_LIBRARY separately; RAID is not a backup.
 
 PostgreSQL/vector extensions and Valkey must match Immich's upstream requirements. Their updates require review even when nominally minor or patch. Read release notes for app upgrades too. Database migrations are not automatically reversible: do not downgrade an Immich image to recover a failed upgrade. Restore a compatible database backup using the instructions for that release, along with photo files if needed.
+
+## Deployment emails and history
+
+The updater reads SMTP_HOST, SMTP_PORT, SMTP_SECURITY, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM, and SMTP_TO from the ignored root .env on each node. See the root .env.example for Brevo defaults. Use starttls on port 587 or ssl on port 465; certificate verification is required. SMTP_PASSWORD is the Brevo SMTP key. No additional container is needed. Uptime Kuma's notification settings remain separate in its persistent application data; its stack environment does not configure SMTP notifications.
+
+One report is sent after container changes or a failed run. It includes node/hostname, UTC timestamps, Git revision, old/new image references and image IDs, recreated/added/removed containers, failed steps, Docker's reported cleanup totals, and available space on Docker's filesystem. A successful check without container changes stays quiet. Configuration-only changes that do not recreate containers (such as a Caddy reload) do not generate a success email. An unavailable container inventory is reported explicitly.
+
+The last 50 run reports are retained as private JSON files under .deploy-state/<node>/history, including unchanged checks. Raw command output and secrets are not included in reports. Email delivery failures are recorded locally and do not fail or repeat a successful deployment; emails are not queued for retry. A powered-off node, hard-killed process, or unreachable SMTP server cannot send an alert; use Uptime Kuma for availability monitoring.
+
+Existing timers pick up the code through Git. Because the running updater is parsed before fetching, its new reporting hooks start on the following scheduled run. No timer reinstall is required. Diun has been removed from the repository; an already running Diun container must be retired separately (the updater does not delete whole removed stacks).

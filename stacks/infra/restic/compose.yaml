@@ -40,7 +40,6 @@ services:
       homelab.node: "infra"
       homelab.stack: "restic"
       homelab.category: "backup"
-      diun.enable: "true"
     networks:
       - default
 

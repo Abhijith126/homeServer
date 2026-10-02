@@ -19,7 +19,7 @@ class DeploymentTests(unittest.TestCase):
         self.run_git(self.origin, "init", "--initial-branch=main")
         self.run_git(self.origin, "config", "user.name", "Test")
         self.run_git(self.origin, "config", "user.email", "test@example.invalid")
-        shutil.copytree(REPO / "scripts", self.origin / "scripts")
+        shutil.copytree(REPO / "scripts", self.origin / "scripts", ignore=shutil.ignore_patterns("__pycache__"))
         for script in (self.origin / "scripts").glob("*.sh"):
             script.chmod(0o755)
         (self.origin / ".gitignore").write_text(".env\n.deploy-state/\n")
@@ -65,7 +65,8 @@ exit 0
                               capture_output=True, text=True)
 
     def lines(self):
-        return self.log.read_text() if self.log.exists() else ""
+        return "".join(line for line in self.log.read_text().splitlines(keepends=True)
+                       if ": ps " not in line and ": info " not in line) if self.log.exists() else ""
 
     def test_merge_deploy_idempotence_and_cleanup(self):
         result = self.deploy()

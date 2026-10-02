@@ -3,6 +3,13 @@
 set -euo pipefail
 umask 077
 
+finish_report() {
+    local status=$?
+    trap - EXIT
+    python3 "$report_root/scripts/deploy-report.py" finish "$report_node" --status "$status" || true
+    exit "$status"
+}
+
 # The function is parsed before Git updates this script in the checkout.
 main() {
     local node="${1:-}" repo_root state_dir revision fingerprint previous=""
@@ -24,6 +31,14 @@ main() {
         echo "Another deployment is running"
         return 0
     }
+
+    report_root="$repo_root"
+    report_node="$node"
+    export HOMELAB_REPORT_STEP_FILE="$state_dir/step"
+    export HOMELAB_REPORT_FAILURE_FILE="$state_dir/failures"
+    python3 scripts/deploy-report.py begin "$node" || true
+    trap finish_report EXIT
+    printf '%s\n' 'Git sync / checkout validation' >"$HOMELAB_REPORT_STEP_FILE"
 
     [[ "$(git branch --show-current)" == main ]] || {
         echo "Checkout must be on main" >&2
@@ -54,7 +69,8 @@ main() {
     # Host-wide image cleanup, including checks with no new revision.
     # Images referenced by running or stopped containers are retained.
     echo "Removing unused images before deployment"
-    docker image prune --all --force
+    printf '%s\n' 'Pre-deployment cleanup' >"$HOMELAB_REPORT_STEP_FILE"
+    docker image prune --all --force | tee "$state_dir/prune-before"
 
     if [[ "$fingerprint" == "$previous" && "${2:-}" != --force ]]; then
         echo "Already deployed $revision"
@@ -62,6 +78,7 @@ main() {
     fi
 
     echo "Deploying $node at $revision"
+    printf '%s\n' 'Generate environment' >"$HOMELAB_REPORT_STEP_FILE"
     ./scripts/gen-env.sh --node "$node" --skip "$skip"
     local deploy_status=0 cleanup_status=0
     ./scripts/deploy-node.sh "$node" --update --skip "$skip" || deploy_status=$?
@@ -69,7 +86,10 @@ main() {
     # Also clean up after failed deployment attempts; never remove containers,
     # volumes, or images still referenced by containers.
     echo "Removing unused images after deployment"
-    docker image prune --all --force || cleanup_status=$?
+    docker image prune --all --force | tee "$state_dir/prune-after" || cleanup_status=$?
+    if [[ "$cleanup_status" -ne 0 ]]; then
+        printf '%s\n' 'Post-deployment cleanup' >>"$HOMELAB_REPORT_FAILURE_FILE"
+    fi
     if [[ "$deploy_status" -ne 0 ]]; then
         return "$deploy_status"
     fi
