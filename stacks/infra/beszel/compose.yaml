@@ -21,7 +21,7 @@ x-common: &common
 services:
   beszel:
     <<: *common
-    image: henrygd/beszel:0.18.7
+    image: henrygd/beszel:0.20.0@sha256:897e807a065adf8e89e30ae0cd79d1f5e38fe84ccaffbc418bde9d3cdca4eacc
     container_name: beszel
     env_file:
       - path: .env
