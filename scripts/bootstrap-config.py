@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Interactive local configuration for the one-command node bootstrap."""
 import getpass
+import argparse
 import ipaddress
 import json
 import os
@@ -11,6 +12,28 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 NODES = {"storage": "storage_nodes", "apps": "app_nodes", "infra": "infra_nodes"}
+SCHEDULES = {"5min", "hourly", "daily", "weekly", "monthly"}
+
+
+def update_settings(previous, schedule=None, update_time=None):
+    schedule = schedule or ask("Update schedule: 5min, hourly, daily, weekly, monthly",
+                               previous.get("bootstrap_update_schedule", "weekly"),
+                               lambda value: value in SCHEDULES)
+    update_time = update_time or ask("Update time (HH:MM; weekly is Monday, monthly is the first)",
+                                     previous.get("bootstrap_update_time", "03:00"),
+                                     lambda value: bool(re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", value)))
+    if schedule not in SCHEDULES or not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", update_time):
+        raise ValueError("Invalid schedule or time")
+    return {"bootstrap_update_schedule": schedule, "bootstrap_update_time": update_time}
+
+
+def configure_updates(node="", root=ROOT, schedule=None, update_time=None):
+    path = root / ".bootstrap/vars.json"
+    data = json.loads(path.read_text())
+    if node and node != data["bootstrap_node"]:
+        raise ValueError("This checkout is already configured for a different node")
+    data.update(update_settings(data, schedule, update_time))
+    save_json(path, data)
 
 
 def read_env(path):
@@ -95,7 +118,7 @@ def credential(key, existing="", generate=False):
         print("A configured value is required.")
 
 
-def configure(node="", root=ROOT):
+def configure(node="", root=ROOT, schedule=None, update_time=None):
     os.umask(0o077)
     directory_path = root / ".bootstrap"
     directory_path.mkdir(mode=0o700, exist_ok=True)
@@ -147,6 +170,7 @@ def configure(node="", root=ROOT):
     gid = ask("Shared media GID", env.get("PGID", str(os.getgid())), str.isdecimal)
     tz = ask("Timezone", env.get("TZ", "Europe/Amsterdam"),
              lambda value: ".." not in value and (Path("/usr/share/zoneinfo") / value).is_file())
+    deployment_schedule = update_settings(previous, schedule, update_time)
     env.update(addresses)
     env.update(PUID=uid, PGID=gid, TZ=tz, DOCKER_DATA=data, MEDIA_ROOT=local_media,
                NFS_BACKUP=local_backup, RESTIC_REPO_PATH=local_backup + "/restic",
@@ -227,6 +251,7 @@ def configure(node="", root=ROOT):
     distro = read_env(Path("/etc/os-release"))
     release = distro.get("VERSION_CODENAME", "")
     vars_data = {
+        **deployment_schedule,
         "bootstrap_node": node, "bootstrap_skip": sorted(skipped),
         "bootstrap_domain": env.get("DOMAIN", "home.arpa"), "bootstrap_infra_ip": addresses["INFRA_HOST"],
         "bootstrap_storage_media": storage_media, "bootstrap_storage_backup": storage_backup,
@@ -259,7 +284,8 @@ def configure(node="", root=ROOT):
 def settings(root=ROOT):
     data = json.loads((root / ".bootstrap/vars.json").read_text())
     return [data["bootstrap_node"], data["bootstrap_media"] + " " + data["bootstrap_backup"],
-            " ".join(data["bootstrap_skip"])]
+            " ".join(data["bootstrap_skip"]), data.get("bootstrap_update_schedule", "weekly"),
+            data.get("bootstrap_update_time", "03:00"), data.get("timezone", "Europe/Amsterdam")]
 
 
 if __name__ == "__main__":
@@ -267,7 +293,14 @@ if __name__ == "__main__":
         if sys.argv[1:] == ["--settings"]:
             print("\n".join(settings()))
         else:
-            configure(sys.argv[1] if len(sys.argv) > 1 else "")
+            parser = argparse.ArgumentParser(description=__doc__)
+            parser.add_argument("node", nargs="?", default="", choices=["", *NODES])
+            parser.add_argument("--schedule", choices=sorted(SCHEDULES))
+            parser.add_argument("--time")
+            parser.add_argument("--updates-only", action="store_true")
+            args = parser.parse_args()
+            function = configure_updates if args.updates_only else configure
+            function(args.node, schedule=args.schedule, update_time=args.time)
     except (ValueError, EOFError, KeyboardInterrupt) as error:
         print(f"Configuration stopped: {error}", file=sys.stderr)
         sys.exit(1)
