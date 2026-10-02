@@ -71,11 +71,14 @@ exit 0
         result = self.deploy()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("alpha: compose up -d --remove-orphans --wait", self.lines())
-        self.assertIn("image prune --all --force --filter until=168h", self.lines())
+        self.assertEqual(self.lines().count("image prune --all --force"), 2)
+        self.assertNotIn("--filter", self.lines())
+        self.assertLess(self.lines().index("image prune"), self.lines().index("compose pull"))
+        self.assertGreater(self.lines().rindex("image prune"), self.lines().rindex("compose up"))
         self.assertFalse((self.checkout / "stacks/storage/database/.env").exists())
         log = self.lines()
         self.assertEqual(self.deploy().returncode, 0)
-        self.assertEqual(log, self.lines())
+        self.assertEqual(self.lines(), log + "checkout: image prune --all --force\n")
         compose = self.origin / "stacks/apps/alpha/compose.yaml"
         compose.write_text(compose.read_text().replace("1.0.0", "1.0.1"))
         self.run_git(self.origin, "add", ".")
@@ -85,10 +88,10 @@ exit 0
         self.assertEqual((self.checkout / ".deploy-state/apps/revision").read_text().strip(), expected)
         self.assertNotEqual(log, self.lines())
 
-    def test_failed_health_skips_cleanup_and_retries(self):
+    def test_failed_health_cleans_up_without_recording_success_and_retries(self):
         self.env["FAIL_UP"] = "beta"
         self.assertNotEqual(self.deploy().returncode, 0)
-        self.assertNotIn("image prune", self.lines())
+        self.assertEqual(self.lines().count("image prune --all --force"), 2)
         self.assertFalse((self.checkout / ".deploy-state/apps/success").exists())
         del self.env["FAIL_UP"]
         self.assertEqual(self.deploy().returncode, 0)
@@ -98,7 +101,7 @@ exit 0
         self.env["FAIL_CONFIG"] = "beta"
         self.assertNotEqual(self.deploy().returncode, 0)
         self.assertNotIn("compose up", self.lines())
-        self.assertNotIn("image prune", self.lines())
+        self.assertEqual(self.lines().count("image prune --all --force"), 2)
 
     def test_local_edits_are_preserved(self):
         path = self.checkout / "stacks/apps/alpha/compose.yaml"
