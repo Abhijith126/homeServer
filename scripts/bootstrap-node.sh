@@ -61,7 +61,7 @@ if sudo systemctl cat homelab-deploy.timer >/dev/null 2>&1; then
 fi
 mkdir -p .bootstrap
 trap 'rm -f "$repo_root/.bootstrap/auth.json"' EXIT
-python3 scripts/bootstrap-config.py "${1:-}"
+python3 scripts/bootstrap-config.py "$@"
 python3 -m venv .bootstrap/venv
 .bootstrap/venv/bin/python -m pip install --quiet 'ansible>=11,<15'
 
@@ -74,11 +74,12 @@ mapfile -t settings < <(python3 scripts/bootstrap-config.py --settings)
 node="${settings[0]}"
 mounts="${settings[1]}"
 skip="${settings[2]}"
-sudo ./scripts/install-auto-deploy.sh "$node" --mounts "$mounts" --skip "$skip"
+sudo ./scripts/install-auto-deploy.sh "$node" --mounts "$mounts" --skip "$skip" \
+    --schedule "${settings[3]}" --time "${settings[4]}" --timezone "${settings[5]}"
 if ! sudo systemctl start homelab-deploy.service; then
     sudo journalctl -u homelab-deploy.service --no-pager -n 60
     echo "Deployment failed. Fix the reported issue and rerun bootstrap." >&2
     exit 1
 fi
-echo "Setup complete. Every merged main change will deploy automatically."
+echo "Setup complete. Merged main changes deploy on your ${settings[3]} schedule."
 echo "Logs: journalctl -u homelab-deploy.service -f"

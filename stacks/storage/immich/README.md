@@ -75,3 +75,7 @@ See the [official backup & restore guide](https://docs.immich.app/administration
 
 - Upstream: https://immich.app · https://github.com/immich-app/immich
 - Bulk CLI upload: `ghcr.io/immich-app/immich-cli`
+
+## Scheduled updates
+
+See [deployment scheduling and Immich backup behavior](../../../docs/automation.md#immich-updates). Server and machine-learning share IMMICH_VERSION; database/cache changes require upstream compatibility review. Automatic deployment backs up an existing database before updating and stops this stack if the dump fails. Photo files need a separate backup.

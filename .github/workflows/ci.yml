@@ -29,11 +29,8 @@ jobs:
       - name: Run validation suite
         run: ./scripts/validate.sh
 
-      - name: Test automatic deployment
-        run: python3 tests/test_auto_deploy.py
-
-      - name: Test reusable bootstrap
-        run: python3 tests/test_bootstrap.py
+      - name: Test bootstrap, scheduling, and deployments
+        run: python3 -m unittest discover -s tests -p 'test_*.py'
 
       - name: Validate local provisioning playbook
         run: ansible-playbook -i localhost, ansible/bootstrap.yml --syntax-check

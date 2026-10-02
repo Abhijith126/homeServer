@@ -238,6 +238,20 @@
         "patch"
       ],
       "automerge": true
+    },
+    {
+      "description": "Immich database and cache versions must follow upstream compatibility guidance; review before merging.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchFileNames": [
+        "stacks/storage/immich/compose.yaml"
+      ],
+      "matchPackageNames": [
+        "ghcr.io/immich-app/postgres",
+        "docker.io/valkey/valkey"
+      ],
+      "automerge": false
     }
   ]
 }
