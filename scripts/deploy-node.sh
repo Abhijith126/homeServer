@@ -35,6 +35,17 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+report_step() {
+    if [[ -n "${HOMELAB_REPORT_STEP_FILE:-}" ]]; then
+        printf '%s\n' "$1" >"$HOMELAB_REPORT_STEP_FILE"
+    fi
+}
+report_failure() {
+    if [[ -n "${HOMELAB_REPORT_FAILURE_FILE:-}" ]]; then
+        cat "$HOMELAB_REPORT_STEP_FILE" >>"$HOMELAB_REPORT_FAILURE_FILE"
+    fi
+}
+
 dirs=()
 for dir in "stacks/$node"/*/; do
     [[ -f "${dir}compose.yaml" ]] || continue
@@ -43,6 +54,7 @@ for dir in "stacks/$node"/*/; do
         echo "SKIP $stack (--skip)"
         continue
     fi
+    report_step "$stack: validate environment and Compose"
     if [[ ! -f "${dir}.env" ]]; then
         if [[ "$update" == true ]]; then
             echo "Missing ${dir}.env; run make config" >&2
@@ -59,6 +71,7 @@ done
     echo "No stacks selected" >&2
     exit 1
 }
+report_step "Create networks"
 ./scripts/create-networks.sh || exit 1
 
 failed=()
@@ -66,17 +79,24 @@ for dir in "${dirs[@]}"; do
     stack="$(basename "$dir")"
     echo "==> $stack"
     if [[ "$update" == true ]]; then
+        report_step "$stack: database backup"
         if [[ "$stack" == immich ]] && ! python3 "$repo_root/scripts/immich-backup.py" "$dir" --pre-update; then
+            report_failure
             failed+=("$stack")
             continue
         fi
         if ! (cd "$dir" &&
+            report_step "$stack: pull images" &&
             docker compose pull --ignore-buildable &&
+            report_step "$stack: build images" &&
             docker compose build --pull &&
+            report_step "$stack: start containers and wait for health" &&
             docker compose up -d --remove-orphans --wait --wait-timeout 300 &&
             if [[ "$stack" == caddy ]]; then
+                report_step "$stack: reload Caddy" &&
                 docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile
             fi); then
+            report_failure
             failed+=("$stack")
         fi
     elif ! (cd "$dir" && docker compose up -d); then

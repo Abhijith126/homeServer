@@ -69,6 +69,5 @@ container restarts may also pick up a newly published app release.
 ## Notes
 
 Stateless: no host mounts, data volumes, or backup scripts. The app is restored
-from the release ZIP. Image downloads are tracked separately from app releases;
-`diun.enable` remains false. This stack preserves the homelab security, logging,
-network, and management-label conventions.
+from the release ZIP. Image downloads are tracked separately from app releases.
+This stack preserves the homelab security, logging, network, and management-label conventions.

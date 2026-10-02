@@ -72,7 +72,6 @@ make config          # renders stacks/<node>/<app>/.env for every stack
 | `homelab.node` | `storage` / `apps` / `infra` |
 | `homelab.stack` | the app name |
 | `homelab.category` | `media`, `arr`, `infra`, `monitoring`, `tools`, … |
-| `diun.enable` | `"true"` (update notifications) |
 
 ## 8. Backup & restore
 
@@ -99,7 +98,7 @@ CI also runs `renovate-config-validator --strict renovate.json` in a pinned Reno
 
 ## 11. Versioning
 
-- Pinned image tags; Diun/Renovate proposes bumps.
+- Pinned image tags; Renovate proposes bumps.
 - Conventional commit messages; the platform itself is tagged semver.
 
 ## 12. k3s / Helm migration path

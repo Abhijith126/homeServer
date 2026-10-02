@@ -90,7 +90,6 @@ services:
       homelab.node: "apps"
       homelab.stack: "portfolio"
       homelab.category: "web"
-      diun.enable: "false"
     networks:
       - default
 

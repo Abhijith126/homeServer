@@ -60,7 +60,6 @@ services:
       homelab.node: "infra"
       homelab.stack: "caddy"
       homelab.category: "proxy"
-      diun.enable: "true"
     networks:
       - default
 
