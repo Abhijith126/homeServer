@@ -215,6 +215,18 @@
         "major"
       ],
       "automerge": false
+    },
+    {
+      "description": "Combine all Docker image updates into one manually reviewed PR.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "groupName": "Docker images",
+      "groupSlug": "docker-images",
+      "groupSingleUpdates": true,
+      "separateMajorMinor": false,
+      "separateMinorPatch": false,
+      "automerge": false
     }
   ]
 }
