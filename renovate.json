@@ -217,7 +217,7 @@
       "automerge": false
     },
     {
-      "description": "Combine all Docker image updates into one manually reviewed PR.",
+      "description": "Combine all Docker image updates; only minor/patch-only batches may automerge.",
       "matchDatasources": [
         "docker"
       ],
@@ -227,6 +227,17 @@
       "separateMajorMinor": false,
       "separateMinorPatch": false,
       "automerge": false
+    },
+    {
+      "description": "Automerge Docker minor and patch updates after successful checks.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "automerge": true
     }
   ]
 }
