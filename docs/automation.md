@@ -25,16 +25,17 @@ For an already provisioned host, install-auto-deploy.sh remains available separa
 ## What happens after a merge
 
 1. Fetch main and fast-forward the local checkout. Tracked local edits or a divergent branch stop deployment.
-2. If the Git revision, root .env, or Caddy token file changed, regenerate node-specific environment files. A failed attempt is retried at the next timer run.
-3. Discover all Compose stacks in that node's folder and validate them before changing containers.
-4. Back up an existing Immich database; abort that stack if the backup fails. Pull registry images, build local images such as Caddy, and run Compose up with --remove-orphans and --wait. Changed containers are recreated; unchanged containers stay running. Caddy's mounted configuration is explicitly reloaded.
-5. After all selected stacks are running or healthy, prune unused Docker images created more than seven days ago and record the successful revision.
+2. Remove all unused Docker images, with no age limit. This also runs when there is no new revision to deploy.
+3. If the Git revision, root .env, or Caddy token file changed, regenerate node-specific environment files. A failed attempt is retried at the next timer run.
+4. Discover all Compose stacks in that node's folder and validate them before changing containers.
+5. Back up an existing Immich database; abort that stack if the backup fails. Pull registry images, build local images such as Caddy, and run Compose up with --remove-orphans and --wait. Changed containers are recreated; unchanged containers stay running. Caddy's mounted configuration is explicitly reloaded.
+6. Remove all unused Docker images again after the deployment attempt, including failed attempts. Record the successful revision only if deployment and cleanup both succeed.
 
-The prune is host-wide and uses Docker's image creation timestamp, not time since last use. Images referenced by running or stopped containers are retained. Volumes and data directories are never pruned. Registry images removed by cleanup can be pulled again during rollback.
+Both cleanup passes use docker image prune --all --force, with no age filter. Cleanup is host-wide. Images referenced by running or stopped containers are retained. Volumes and data directories are never pruned. Registry images removed by cleanup can be pulled again during rollback.
 
 A new folder under stacks/<node>/<app> is discovered automatically on the next merge; no new deployment entry is needed. Use the existing new-app scaffolder and provide any new secrets in the node's root .env. Removed services within a Compose project are cleaned up as orphans. Removing a whole stack folder does not delete that project's containers or data; retire whole stacks deliberately with Compose down, without -v.
 
-Deployments across nodes are independent and are not an atomic transaction. If one stack fails, other stacks may already have updated. The node records no successful revision and skips image cleanup, then retries. It does not automatically roll back database migrations.
+Deployments across nodes are independent and are not an atomic transaction. If one stack fails, other stacks may already have updated. The node still cleans up unused images, records no successful revision, and retries at the next scheduled run. It does not automatically roll back database migrations.
 
 ## Renovate update policy
 
