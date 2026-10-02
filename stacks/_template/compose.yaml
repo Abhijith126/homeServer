@@ -50,7 +50,6 @@ services:
       homelab.node: "<node>"
       homelab.stack: "<app>"
       homelab.category: "<category>"
-      diun.enable: "true"
     networks:
       - default
 

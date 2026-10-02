@@ -55,7 +55,7 @@ Uses the standard scripts (config is a self-contained SQLite dir):
 docker compose pull && docker compose up -d
 ```
 
-Bump the pinned tag in `compose.yaml` (tracked by Diun).
+Bump the pinned tag in `compose.yaml` (tracked by Renovate).
 
 ## Links
 

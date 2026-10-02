@@ -21,7 +21,7 @@ config: ## Generate every stack's .env from the root .env
 config-check: ## Verify all stack .env files exist with no unset secrets
 	@./scripts/gen-env.sh --check
 
-deploy: ## Deploy all stacks for a node: make deploy NODE=infra [SKIP="diun caddy"]
+deploy: ## Deploy all stacks for a node: make deploy NODE=infra [SKIP="caddy"]
 	@./scripts/deploy-node.sh $(NODE) $(if $(SKIP),--skip "$(SKIP)")
 
 auto-deploy: ## Reconcile from main now: make auto-deploy NODE=apps

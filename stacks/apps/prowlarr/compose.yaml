@@ -44,7 +44,6 @@ services:
       homelab.node: "apps"
       homelab.stack: "prowlarr"
       homelab.category: "arr"
-      diun.enable: "true"
     networks:
       - default
 

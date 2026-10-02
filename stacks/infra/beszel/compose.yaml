@@ -36,7 +36,6 @@ services:
       homelab.node: "infra"
       homelab.stack: "beszel"
       homelab.category: "monitoring"
-      diun.enable: "true"
     networks:
       - default
 

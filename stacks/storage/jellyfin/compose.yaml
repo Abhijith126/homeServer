@@ -47,7 +47,6 @@ services:
       homelab.node: "storage"
       homelab.stack: "jellyfin"
       homelab.category: "media"
-      diun.enable: "true"
 
 volumes:
   jellyfin-cache:

@@ -46,7 +46,6 @@ services:
       homelab.node: "apps"
       homelab.stack: "bazarr"
       homelab.category: "arr"
-      diun.enable: "true"
     networks:
       - default
 

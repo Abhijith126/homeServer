@@ -15,10 +15,10 @@
   "dependencyDashboard": true,
   "timezone": "Europe/Amsterdam",
   "schedule": [
-    "* 0-4 * * *"
+    "* * * * 0"
   ],
   "automergeSchedule": [
-    "* 0-4 * * *"
+    "* * * * 0"
   ],
   "automerge": false,
   "automergeType": "pr",
@@ -252,6 +252,18 @@
         "docker.io/valkey/valkey"
       ],
       "automerge": false
+    },
+    {
+      "description": "Keep Immich on PostgreSQL 14; changing the database major requires an explicit data migration.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "ghcr.io/immich-app/postgres"
+      ],
+      "allowedVersions": "/^14-/",
+      "automerge": false
     }
-  ]
+  ],
+  "updateNotScheduled": false
 }
