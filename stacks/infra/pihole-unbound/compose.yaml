@@ -58,7 +58,6 @@ services:
       homelab.node: "infra"
       homelab.stack: "pihole-unbound"
       homelab.category: "dns"
-      diun.enable: "true"
     networks:
       - default
 

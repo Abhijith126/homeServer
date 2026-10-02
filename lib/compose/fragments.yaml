@@ -34,7 +34,6 @@ x-healthcheck-defaults: &healthcheck-defaults
 
 x-labels: &labels
   homelab.managed: "true"
-  diun.enable: "true"
 
 x-common: &common
   restart: unless-stopped

@@ -35,7 +35,7 @@ The timer then checks main on the selected schedule (weekly by default), deploys
 
 Use consistent LAN addresses, export directories, and media UID/GID across all three runs. The backup password must be identical on every node.
 
-The wizard offers qBittorrent/VPN, Diun/SMTP, Beszel agent, and backups where those stacks exist. Services whose external credentials are unavailable can be skipped, and enabled later by rerunning with --reconfigure. Other stacks can be skipped by name. Portfolio prompts for the repository publishing the standalone ZIP and checksum, so a fork can use its own application.
+The wizard offers qBittorrent/VPN, Beszel agent, and backups where those stacks exist. Services whose external credentials are unavailable can be skipped, and enabled later by rerunning with --reconfigure. Other stacks can be skipped by name. Portfolio prompts for the repository publishing the standalone ZIP and checksum, so a fork can use its own application.
 
 Secrets and generated settings stay in the ignored root .env, .bootstrap directory, and infra-only cloudflare.env. They are not written to inventory.ini or committed. The temporary Tailscale auth-key file is removed when setup exits. For already configured services, setup reuses credentials from the root .env or existing stack .env files. If existing Immich or Homarr data is detected without its credential, it asks for the current password/key instead of generating a replacement. Rerunning setup preserves configured passwords and encryption keys.
 

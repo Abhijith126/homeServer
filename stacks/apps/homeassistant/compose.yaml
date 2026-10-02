@@ -41,4 +41,3 @@ services:
       homelab.node: "apps"
       homelab.stack: "homeassistant"
       homelab.category: "home-automation"
-      diun.enable: "true"

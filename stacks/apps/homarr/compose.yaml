@@ -45,7 +45,6 @@ services:
       homelab.node: "apps"
       homelab.stack: "homarr"
       homelab.category: "dashboard"
-      diun.enable: "true"
     networks:
       - default
 

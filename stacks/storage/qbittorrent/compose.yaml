@@ -52,7 +52,6 @@ services:
       homelab.node: "storage"
       homelab.stack: "qbittorrent"
       homelab.category: "downloads"
-      diun.enable: "true"
 
   qbittorrent:
     <<: *common
@@ -84,4 +83,3 @@ services:
       homelab.node: "storage"
       homelab.stack: "qbittorrent"
       homelab.category: "downloads"
-      diun.enable: "true"

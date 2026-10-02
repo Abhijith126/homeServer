@@ -181,7 +181,6 @@ def configure(node="", root=ROOT, schedule=None, update_time=None):
     for stack, label, configured in [
         ("restic", "Enable encrypted backups", usable(env.get("RESTIC_PASSWORD", "")) or "restic" not in skipped),
         ("qbittorrent", "Enable qBittorrent with your VPN account", usable(env.get("OPENVPN_PASSWORD", "")) or usable(env.get("WIREGUARD_PRIVATE_KEY", ""))),
-        ("diun", "Enable Diun SMTP notifications", usable(env.get("SMTP_PASSWORD", ""))),
         ("beszel-agent", "Enable Beszel agent (requires the hub's public key)", usable(env.get("BESZEL_AGENT_KEY", ""))),
     ]:
         if stack in available:
@@ -189,7 +188,7 @@ def configure(node="", root=ROOT, schedule=None, update_time=None):
                 skipped.discard(stack)
             else:
                 skipped.add(stack)
-    optional = {"restic", "qbittorrent", "diun", "beszel-agent", "portainer"}
+    optional = {"restic", "qbittorrent", "beszel-agent", "portainer"}
     prior_extra = sorted(skipped - optional)
     extra_text = input("Additional stack names to skip (space-separated, none clears" + (", current: " + " ".join(prior_extra) if prior_extra else "") + "): ").strip()
     extra = ([] if extra_text == "none" else extra_text.split()) if extra_text else prior_extra

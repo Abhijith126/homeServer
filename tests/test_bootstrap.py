@@ -88,7 +88,6 @@ class BootstrapTests(unittest.TestCase):
                              "Infra node LAN IPv4": "10.10.0.12",
                              "LAN CIDR": "10.10.0.0/24"})
         data = self.configure("infra")
-        self.assertIn("diun", data["bootstrap_skip"])
         self.assertIn("beszel-agent", data["bootstrap_skip"])
         env = config.read_env(self.root / ".env")
         self.assertEqual(env["CADDY_GLOBAL_OPTIONS"], "local_certs")

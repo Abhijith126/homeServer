@@ -47,7 +47,6 @@ services:
       homelab.node: "storage"
       homelab.stack: "filebrowser"
       homelab.category: "files"
-      diun.enable: "true"
     networks:
       - default
 
