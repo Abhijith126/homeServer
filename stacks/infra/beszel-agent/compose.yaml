@@ -22,7 +22,7 @@ x-common: &common
 services:
   beszel-agent:
     <<: *common
-    image: henrygd/beszel-agent:0.18.7
+    image: henrygd/beszel-agent:0.20.0@sha256:765e3d4a087c4bcbf6b78ed0f1dfdcd669c4bf6ad5789a832d2944603ae7fd08
     container_name: beszel-agent
     network_mode: host
     env_file:
