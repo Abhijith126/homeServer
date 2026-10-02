@@ -22,11 +22,11 @@ x-common: &common
 services:
   caddy:
     <<: *common
-    image: caddy-cloudflare:2.11.4        # built locally with the Cloudflare DNS plugin (see Dockerfile)
+    image: caddy-cloudflare:2.11.6        # built locally with the Cloudflare DNS plugin (see Dockerfile)
     build:
       context: .
       args:
-        CADDY_VERSION: "2.11.4"
+        CADDY_VERSION: "2.11.6"
     container_name: caddy
     env_file:
       - path: .env
