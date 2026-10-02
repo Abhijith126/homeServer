@@ -19,7 +19,7 @@ services:
     logging: *logging
     security_opt:
       - no-new-privileges:true
-    image: mazzolino/restic:1.8.2
+    image: mazzolino/restic:1.8.2@sha256:685293a0bc77eb054b74b207561e7d2eda6cfc910984c5a93db8f253055118e2
     container_name: restic
     hostname: infra
     environment:

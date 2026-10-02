@@ -21,7 +21,7 @@ x-common: &common
 services:
   pihole:
     <<: *common
-    image: cbcrowe/pihole-unbound:2024.03.2
+    image: cbcrowe/pihole-unbound:2024.03.2@sha256:8f9236789cb8d164d2d20c92a07ab543c72e69f162f8926568e919f478429dbf
     container_name: pihole
     hostname: pihole
     env_file:
