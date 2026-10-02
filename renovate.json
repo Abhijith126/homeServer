@@ -15,10 +15,10 @@
   "dependencyDashboard": true,
   "timezone": "Europe/Amsterdam",
   "schedule": [
-    "* 0-4 * * *"
+    "* * * * 0"
   ],
   "automergeSchedule": [
-    "* 0-4 * * *"
+    "* * * * 0"
   ],
   "automerge": false,
   "automergeType": "pr",
@@ -264,5 +264,6 @@
       "allowedVersions": "/^14-/",
       "automerge": false
     }
-  ]
+  ],
+  "updateNotScheduled": false
 }
