@@ -20,7 +20,7 @@ x-common: &common
 services:
   radarr:
     <<: *common
-    image: lscr.io/linuxserver/radarr:6.3.0.10514-ls312
+    image: lscr.io/linuxserver/radarr:6.4.4.10685-ls318@sha256:adb6c09d6b729ea5e642c99cea35af72702ef476bf4763f153299ac5db9f0b4f
     container_name: radarr
     env_file:
       - path: .env
