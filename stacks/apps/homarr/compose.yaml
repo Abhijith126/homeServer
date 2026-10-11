@@ -21,7 +21,7 @@ x-common: &common
 services:
   homarr:
     <<: *common
-    image: ghcr.io/homarr-labs/homarr:v2.1.2@sha256:801f9a3d6dd1a58bc59f7d55869a1d83fb0c1e06571697f33122f7db010dc702
+    image: ghcr.io/homarr-labs/homarr:v2.4.1@sha256:447267051fd7f3c76087498ad96c8b969f57c6762eaeb78717b69388ae1a781a
     container_name: homarr
     env_file:
       - path: .env
