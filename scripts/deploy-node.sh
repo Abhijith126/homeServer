@@ -78,6 +78,14 @@ failed=()
 for dir in "${dirs[@]}"; do
     stack="$(basename "$dir")"
     echo "==> $stack"
+    if [[ "$stack" == pihole-unbound ]]; then
+        report_step "$stack: preserve DNS trust anchor"
+        if ! python3 "$repo_root/scripts/prepare-dns-state.py" "$dir"; then
+            report_failure
+            failed+=("$stack")
+            continue
+        fi
+    fi
     if [[ "$update" == true ]]; then
         report_step "$stack: database backup"
         if [[ "$stack" == immich ]] && ! python3 "$repo_root/scripts/immich-backup.py" "$dir" --pre-update; then

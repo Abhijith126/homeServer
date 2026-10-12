@@ -24,6 +24,7 @@ Uses the combined `cbcrowe/pihole-unbound` image (pinned), preserving your curre
 
 ```bash
 cp .env.example .env && $EDITOR .env
+python3 ../../../scripts/prepare-dns-state.py .
 docker compose up -d
 ```
 
@@ -50,8 +51,8 @@ docker compose up -d
 
 The legacy Pi-hole v5 image has its own DNSSEC validation, independent of Unbound. Keep Pi-hole's Use DNSSEC checkbox off and its upstream at 127.0.0.1#5335; DNSSEC validation remains enabled in Unbound. The October 2026 root-key rollover exposed both an ADDPEND Unbound anchor and a failing second validation pass in Pi-hole.
 
-The s6 Unbound startup script refreshes the root anchor through unbound-anchor's forced, signature-verified IANA XML recovery path before starting the daemon. Never refresh the active anchor while Unbound is running: it may overwrite the file with in-memory state. Unbound state is persisted in a named volume so it survives container recreation. A fresh volume is bootstrapped from verified anchor data. The refresh requires outbound DNS and HTTPS; failed refreshes retain existing anchor data, and the healthcheck checks whether DNS actually works.
+The s6 Unbound startup script refreshes the root anchor through unbound-anchor's forced, signature-verified IANA XML recovery path before starting the daemon. Never refresh the active anchor while Unbound is running: it may overwrite the file with in-memory state. Before the first recreation of an existing unmanaged container, prepare-dns-state.py checks the live Unbound root response for NOERROR and AD, copies its live root.key into the resolved Compose volume using the already-local image in a stopped helper container, and verifies the copied bytes. The Docker copy does not pull images or require IANA access. A failed validation or copy cancels deployment while the existing container stays intact. A stopped or broken legacy resolver must be recovered before migration. The node deployer runs this preparation automatically before pulling images; manual Compose users must run the command above first. Unbound state is persisted in a named volume so it survives container recreation. A fresh volume is bootstrapped from verified anchor data. The refresh requires outbound DNS and HTTPS; failed refreshes retain existing anchor data, and the healthcheck checks whether DNS actually works.
 
 Health checks require an authenticated (AD) root DNSKEY response from Unbound and a NOERROR root NS response through Pi-hole. dig's exit status alone is insufficient because it can exit successfully for SERVFAIL responses. These checks depend on working outbound DNS; the container may be marked unhealthy during an outage. Allow startup time for rebuilding large blocklists. Do not run compose down -v, which deletes the named anchor volume.
 
-For an immediate correction before this change is deployed, open the Pi-hole UI at http://<infra-ip>:<web-port>/admin, go to Settings > DNS, uncheck Use DNSSEC, and save. After DNS is restored, the existing infra updater can pull and deploy this change. Do not attempt a Pi-hole v5-to-v6 migration as part of incident recovery; this patch keeps the pinned image and existing Pi-hole data.
+For an immediate correction before this change is deployed, the Pi-hole Use DNSSEC setting must be disabled while keeping the upstream at 127.0.0.1#5335. The old Compose DNSSEC=true environment setting can enforce the checkbox; change that to false through this rollout. Do not recreate the legacy container before migrating its repaired live anchor. After DNS is restored, the existing infra updater can pull and deploy this change. Do not attempt a Pi-hole v5-to-v6 migration as part of incident recovery; this patch keeps the pinned image and existing Pi-hole data.
