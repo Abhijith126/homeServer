@@ -32,7 +32,8 @@ services:
       FTLCONF_LOCAL_IPV4: ${PIHOLE_HOST_IP}
       WEBPASSWORD: ${PIHOLE_WEBPASSWORD}
       PIHOLE_DNS_: 127.0.0.1#5335         # upstream = the bundled Unbound
-      DNSSEC: "true"
+      # Unbound validates DNSSEC; avoid the old Pi-hole image validating again.
+      DNSSEC: "false"
       DNSMASQ_LISTENING: single
       WEBTHEME: default-light
       REV_SERVER: "true"
@@ -47,12 +48,15 @@ services:
     volumes:
       - ${DOCKER_DATA}/pihole-unbound/etc-pihole:/etc/pihole
       - ${DOCKER_DATA}/pihole-unbound/etc-dnsmasq:/etc/dnsmasq.d
+      - unbound-state:/var/lib/unbound
+      - ./unbound-run.sh:/etc/services.d/unbound/run:ro
+      - ./dns-healthcheck.sh:/usr/local/bin/homelab-dns-healthcheck:ro
     healthcheck:
-      test: ["CMD-SHELL", "dig +norecurse +retry=0 @127.0.0.1 pi.hole || exit 1"]
+      test: ["CMD", "bash", "/usr/local/bin/homelab-dns-healthcheck"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 120s
     labels:
       homelab.managed: "true"
       homelab.node: "infra"
@@ -64,3 +68,6 @@ services:
 networks:
   default:
     name: pihole-unbound
+
+volumes:
+  unbound-state:
