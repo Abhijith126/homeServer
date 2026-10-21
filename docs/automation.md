@@ -25,17 +25,29 @@ For an already provisioned host, install-auto-deploy.sh remains available separa
 ## What happens after a merge
 
 1. Fetch main and fast-forward the local checkout. Tracked local edits or a divergent branch stop deployment.
-2. Remove all unused Docker images, with no age limit. This also runs when there is no new revision to deploy.
+2. Record managed image IDs before replacing containers; do not delete images before deployment.
 3. If the Git revision, root .env, or Caddy token file changed, regenerate node-specific environment files. A failed attempt is retried at the next timer run.
 4. Discover all Compose stacks in that node's folder and validate them before changing containers.
 5. Back up an existing Immich database; abort that stack if the backup fails. Pull registry images, build local images such as Caddy, and run Compose up with --remove-orphans and --wait. Changed containers are recreated; unchanged containers stay running. Caddy's mounted configuration is explicitly reloaded.
-6. Remove all unused Docker images again after the deployment attempt, including failed attempts. Record the successful revision only if deployment and cleanup both succeed.
+6. After successful deployment, remove previously observed homelab images unused for at least 14 days. Failed deployments preserve all images. Record success only after deployment and cleanup succeed.
 
-Both cleanup passes use docker image prune --all --force, with no age filter. Cleanup is host-wide. Images referenced by running or stopped containers are retained. Volumes and data directories are never pruned. Registry images removed by cleanup can be pulled again during rollback.
+Retention is measured from observed disuse, not image creation age. State lives in .deploy-state/<node>/images.json. Unknown/unmanaged images are not collected; images referenced by any running or stopped container are retained. There is no force deletion, volume pruning, or automatic database rollback. Successful unchanged checks can collect expired images too. Losing the retention state can leak old images but cannot accelerate deletion.
 
 A new folder under stacks/<node>/<app> is discovered automatically on the next merge; no new deployment entry is needed. Use the existing new-app scaffolder and provide any new secrets in the node's root .env. Removed services within a Compose project are cleaned up as orphans. Removing a whole stack folder does not delete that project's containers or data; retire whole stacks deliberately with Compose down, without -v.
 
-Deployments across nodes are independent and are not an atomic transaction. If one stack fails, other stacks may already have updated. The node still cleans up unused images, records no successful revision, and retries at the next scheduled run. It does not automatically roll back database migrations.
+Beszel agents have a stack in each node folder, so apps, storage, and infra all
+receive Renovate's agent updates. Existing nodes must have BESZEL_AGENT_KEY set
+in the root .env and must not skip beszel-agent. Reconfigure setup to enable a
+previously skipped agent. CI checks that all three agent manifests stay aligned.
+
+All Compose services use restart: unless-stopped. Docker restarts exited
+containers and starts them after a daemon/host restart, unless explicitly
+stopped. A manual stop persists across reboots. Healthcheck failure alone does
+not restart a running container; recurring crashes still require fixing their
+cause. These settings apply when Compose reconciles the containers, not merely
+when the repository is pulled.
+
+Deployments across nodes are independent and are not atomic. If one stack fails, others may already have updated. The node preserves images, records no successful revision, and retries at the next scheduled run. It does not automatically roll back database migrations.
 
 ## Renovate update policy
 
@@ -83,11 +95,34 @@ Revert a version commit in Git to deploy the previous image. For database migrat
 
 ## Portfolio release ZIPs
 
-Renovate tracks portfolio's Node image. Its existing startup script downloads the standalone ZIP configured by PORTFOLIO_RELEASE. A release published only in the portfolio repository does not change homeServer or restart its container.
+Portfolio's pinned release ZIP is baked into a local image during deployment; startup has no downloads. Renovate tracks its Dockerfile release pin and Node base image. Release changes require review.
 
-To deploy that release through this mechanism, update PORTFOLIO_RELEASE to the exact tag in the committed portfolio .env.example, then merge. Remove the root .env PORTFOLIO_RELEASE=latest override first, so the committed value takes effect. Or manually recreate the portfolio container. Automatic cross-repository release propagation requires a separate release-PR integration.
+Release selection now lives in Dockerfile. Remove old PORTFOLIO_RELEASE overrides from .env; they are no longer used. See the stack README for migration and rollback.
 
 ## Update schedule
+
+### Independent health checks
+
+Re-run the timer installer with existing schedule, mounts and skip list (or setup
+reconfiguration) to install homelab-health.timer. Git pull alone does not create
+this new unit. It runs every 15 minutes independently of updates, skipping while
+a deployment holds the shared lock. It checks expected Compose services for
+missing/stopped/unhealthy replicas and restic snapshots by node/tag. Services
+without healthchecks are checked for running state only.
+
+The default backup freshness window is 120 hours, allowing the Wed/Sun schedule
+plus grace. Override HOMELAB_BACKUP_MAX_HOURS in the health service for different
+schedules. Skipped restic stacks are not checked. Freshness does not prove data
+consistency or restorability.
+
+Alerts use existing root .env SMTP settings. Unchanged health stays quiet;
+changed failures/recovery notify. Failed delivery retries for ongoing failures.
+Local results live in .deploy-state/<node>/health.json. No automatic restarts or
+database rollbacks occur. Use external monitoring for dead nodes or broken SMTP.
+View journalctl -u homelab-health.service. Keep HOMELAB_SKIP_STACKS aligned in
+both units when editing manually; reconfiguration installs the same list in both.
+
+### Deployment cadence
 
 On an already bootstrapped node, the same setup command changes only the schedule and preserves credentials. From its checkout:
 
@@ -111,7 +146,7 @@ PostgreSQL/vector extensions and Valkey must match Immich's upstream requirement
 
 The updater reads SMTP_HOST, SMTP_PORT, SMTP_SECURITY, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM, and SMTP_TO from the ignored root .env on each node. See the root .env.example for Brevo defaults. Use starttls on port 587 or ssl on port 465; certificate verification is required. SMTP_PASSWORD is the Brevo SMTP key. No additional container is needed. Uptime Kuma's notification settings remain separate in its persistent application data; its stack environment does not configure SMTP notifications.
 
-One report is sent after container changes or a failed run. It includes node/hostname, UTC timestamps, Git revision, old/new image references and image IDs, recreated/added/removed containers, failed steps, Docker's reported cleanup totals, and available space on Docker's filesystem. A successful check without container changes stays quiet. Configuration-only changes that do not recreate containers (such as a Caddy reload) do not generate a success email. An unavailable container inventory is reported explicitly.
+One report is sent after container changes or a failed run. It includes node/hostname, UTC timestamps, Git revision, old/new image references and image IDs, recreated/added/removed containers, failed steps, and available space on Docker's filesystem. Image-retention decisions are in the deployment journal; the legacy prune-total fields may be unavailable because host-wide pruning no longer runs. A successful check without container changes stays quiet. Configuration-only changes that do not recreate containers (such as a Caddy reload) do not generate a success email. An unavailable container inventory is reported explicitly.
 
 The last 50 run reports are retained as private JSON files under .deploy-state/<node>/history, including unchanged checks. Raw command output and secrets are not included in reports. Email delivery failures are recorded locally and do not fail or repeat a successful deployment; emails are not queued for retry. A powered-off node, hard-killed process, or unreachable SMTP server cannot send an alert; use Uptime Kuma for availability monitoring.
 

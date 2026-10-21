@@ -69,3 +69,7 @@
     name: proxy
     driver: bridge
     state: present
+
+- name: Configure opt-in Docker ingress filtering
+  ansible.builtin.include_tasks: firewall.yml
+  when: docker_firewall_enabled | default(false) | bool
