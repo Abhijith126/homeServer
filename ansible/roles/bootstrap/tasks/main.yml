@@ -13,7 +13,7 @@
     owner: "{{ homelab_uid }}"
     group: "{{ homelab_gid }}"
     mode: "0775"
-  loop: ["Downloads", "Shows", "Movies", "Music", "Files", "Gallery"]
+  loop: ["Downloads", "Shows", "Movies", "Music", "Files", "Gallery", "Drive"]
   when: bootstrap_node == 'storage'
 
 - name: Prepare the shared backup repository directory

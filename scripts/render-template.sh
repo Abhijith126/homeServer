@@ -30,3 +30,6 @@ for f in compose.yaml .env.example README.md backup.sh restore.sh; do
 done
 
 chmod +x "${dest}/backup.sh" "${dest}/restore.sh"
+# Real stacks live one directory deeper than stacks/_template.
+sed -i.bak 's#../../scripts/stack-backup.py#../../../scripts/stack-backup.py#' "${dest}/backup.sh"
+rm -f "${dest}/backup.sh.bak"

@@ -40,6 +40,11 @@ class DeploymentTests(unittest.TestCase):
         self.log = self.root / "docker.log"
         bin_dir = self.root / "bin"
         bin_dir.mkdir()
+        if not shutil.which('flock'):
+            # macOS lacks util-linux; use its equivalent flock syscall in tests.
+            flock = bin_dir / 'flock'
+            flock.write_text('#!/usr/bin/env python3\nimport fcntl, sys\nfcntl.flock(int(sys.argv[-1]), fcntl.LOCK_EX | fcntl.LOCK_NB)\n')
+            flock.chmod(0o755)
         docker = bin_dir / "docker"
         docker.write_text("""#!/usr/bin/env bash
 printf '%s: %s\\n' "$(basename "$PWD")" "$*" >>"$DOCKER_LOG"
@@ -72,14 +77,12 @@ exit 0
         result = self.deploy()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("alpha: compose up -d --remove-orphans --wait", self.lines())
-        self.assertEqual(self.lines().count("image prune --all --force"), 2)
-        self.assertNotIn("--filter", self.lines())
-        self.assertLess(self.lines().index("image prune"), self.lines().index("compose pull"))
-        self.assertGreater(self.lines().rindex("image prune"), self.lines().rindex("compose up"))
+        self.assertNotIn("image prune", self.lines())
+        self.assertTrue((self.checkout / '.deploy-state/apps/images.json').exists())
         self.assertFalse((self.checkout / "stacks/storage/database/.env").exists())
         log = self.lines()
         self.assertEqual(self.deploy().returncode, 0)
-        self.assertEqual(self.lines(), log + "checkout: image prune --all --force\n")
+        self.assertEqual(self.lines(), log)
         compose = self.origin / "stacks/apps/alpha/compose.yaml"
         compose.write_text(compose.read_text().replace("1.0.0", "1.0.1"))
         self.run_git(self.origin, "add", ".")
@@ -89,20 +92,21 @@ exit 0
         self.assertEqual((self.checkout / ".deploy-state/apps/revision").read_text().strip(), expected)
         self.assertNotEqual(log, self.lines())
 
-    def test_failed_health_cleans_up_without_recording_success_and_retries(self):
+    def test_failed_health_preserves_images_without_recording_success_and_retries(self):
         self.env["FAIL_UP"] = "beta"
         self.assertNotEqual(self.deploy().returncode, 0)
-        self.assertEqual(self.lines().count("image prune --all --force"), 2)
+        self.assertNotIn("image prune", self.lines())
+        self.assertNotIn("image rm", self.lines())
         self.assertFalse((self.checkout / ".deploy-state/apps/success").exists())
         del self.env["FAIL_UP"]
         self.assertEqual(self.deploy().returncode, 0)
-        self.assertIn("image prune", self.lines())
+        self.assertNotIn("image prune", self.lines())
 
     def test_validation_failure_changes_no_containers(self):
         self.env["FAIL_CONFIG"] = "beta"
         self.assertNotEqual(self.deploy().returncode, 0)
         self.assertNotIn("compose up", self.lines())
-        self.assertEqual(self.lines().count("image prune --all --force"), 2)
+        self.assertNotIn("image prune", self.lines())
 
     def test_local_edits_are_preserved(self):
         path = self.checkout / "stacks/apps/alpha/compose.yaml"

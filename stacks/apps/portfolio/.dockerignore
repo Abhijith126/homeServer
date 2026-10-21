@@ -1,0 +1,4 @@
+# Build inputs are remote pinned releases; do not send local credentials.
+*
+!Dockerfile
+!.dockerignore

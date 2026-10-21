@@ -24,7 +24,7 @@ jobs:
         run: |
           python -m pip install --quiet yamllint 'ansible>=11,<15'
           sudo apt-get update -qq
-          sudo apt-get install -y -qq shellcheck
+          sudo apt-get install -y -qq shellcheck restic
 
       - name: Run validation suite
         run: ./scripts/validate.sh
@@ -39,6 +39,8 @@ jobs:
 
       - name: Validate Caddy configuration with internal TLS
         run: |
+          docker build -t homelab-caddy-ci stacks/infra/caddy
+          docker run --rm homelab-caddy-ci caddy list-modules | grep -Fx dns.providers.cloudflare
           docker run --rm \
             -e DOMAIN=home.arpa \
             -e ACME_EMAIL=admin@example.invalid \
@@ -47,7 +49,23 @@ jobs:
             -e INFRA_HOST=10.10.0.12 \
             -e CADDY_GLOBAL_OPTIONS=local_certs \
             -v "$PWD/stacks/infra/caddy/Caddyfile:/etc/Caddyfile:ro" \
-            caddy:2.11.4 caddy adapt --config /etc/Caddyfile --validate
+            homelab-caddy-ci caddy adapt --config /etc/Caddyfile --validate
+
+      - name: Build and smoke-test the offline portfolio runtime
+        run: |
+          docker build -t homelab-portfolio-ci stacks/apps/portfolio
+          docker run -d --network none --name portfolio-ci homelab-portfolio-ci
+          trap 'docker logs portfolio-ci; docker rm -f portfolio-ci' EXIT
+          for attempt in $(seq 1 30); do
+            if docker exec portfolio-ci node -e "
+              require('http').get('http://127.0.0.1:3000/',r=>{
+                r.resume();process.exit(r.statusCode===200?0:1)
+              }).on('error',()=>process.exit(1))"; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
 
       # gitleaks-action is free for personal/public repositories.
       - name: Secret scan (gitleaks)

@@ -66,14 +66,14 @@ main() {
         fi
     } | sha256sum | cut -d ' ' -f 1)"
     [[ ! -f "$state_dir/success" ]] || previous="$(cat "$state_dir/success")"
-    # Host-wide image cleanup, including checks with no new revision.
-    # Images referenced by running or stopped containers are retained.
-    echo "Removing unused images before deployment"
-    printf '%s\n' 'Pre-deployment cleanup' >"$HOMELAB_REPORT_STEP_FILE"
-    docker image prune --all --force | tee "$state_dir/prune-before"
+    # Record old image IDs before recreation. Image creation age is NOT a
+    # rollback retention window; track when each observed image became unused.
+    printf '%s\n' 'Record image retention inventory' >"$HOMELAB_REPORT_STEP_FILE"
+    python3 scripts/image-retention.py "$node"
 
     if [[ "$fingerprint" == "$previous" && "${2:-}" != --force ]]; then
         echo "Already deployed $revision"
+        python3 scripts/image-retention.py "$node" --cleanup
         return 0
     fi
 
@@ -83,15 +83,14 @@ main() {
     local deploy_status=0 cleanup_status=0
     ./scripts/deploy-node.sh "$node" --update --skip "$skip" || deploy_status=$?
 
-    # Also clean up after failed deployment attempts; never remove containers,
-    # volumes, or images still referenced by containers.
-    echo "Removing unused images after deployment"
-    docker image prune --all --force | tee "$state_dir/prune-after" || cleanup_status=$?
+    if [[ "$deploy_status" -ne 0 ]]; then
+        # Preserve all rollback candidates after any failed deployment.
+        return "$deploy_status"
+    fi
+    echo "Removing managed images unused for at least 14 days"
+    python3 scripts/image-retention.py "$node" --cleanup | tee "$state_dir/prune-after" || cleanup_status=$?
     if [[ "$cleanup_status" -ne 0 ]]; then
         printf '%s\n' 'Post-deployment cleanup' >>"$HOMELAB_REPORT_FAILURE_FILE"
-    fi
-    if [[ "$deploy_status" -ne 0 ]]; then
-        return "$deploy_status"
     fi
     if [[ "$cleanup_status" -ne 0 ]]; then
         return "$cleanup_status"
