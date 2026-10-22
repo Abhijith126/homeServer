@@ -1,0 +1,39 @@
+---
+# Deliberately opt-in: first review public ports and all trusted source networks.
+- name: Install Docker ingress policy helper
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../scripts/docker-firewall.py"
+    dest: /usr/local/sbin/homelab-docker-firewall
+    mode: "0755"
+
+- name: Write Docker ingress policy configuration
+  ansible.builtin.copy:
+    dest: /etc/homelab-docker-firewall.json
+    mode: "0644"
+    content: >-
+      {{ {'allowed_sources': docker_allowed_sources,
+          'public_tcp': docker_public_tcp, 'public_udp': docker_public_udp} | to_nice_json }}
+
+- name: Reapply ingress policy whenever Docker starts
+  ansible.builtin.file:
+    path: /etc/systemd/system/docker.service.d
+    state: directory
+    mode: "0755"
+
+- name: Install Docker firewall startup hook
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/docker.service.d/homelab-firewall.conf
+    mode: "0644"
+    content: |
+      [Service]
+      ExecStartPost=/usr/local/sbin/homelab-docker-firewall /etc/homelab-docker-firewall.json
+  register: docker_firewall_hook
+
+- name: Reload systemd for firewall hook
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  when: docker_firewall_hook.changed
+
+- name: Apply Docker ingress policy
+  ansible.builtin.command: /usr/local/sbin/homelab-docker-firewall /etc/homelab-docker-firewall.json
+  changed_when: true

@@ -17,7 +17,9 @@ docker exec restic backup      # first run now; cron takes over after
 
 ```bash
 docker exec restic snapshots
-docker exec restic restic restore latest --target /   # stop the app stack first
+# From the homeServer checkout; create /mnt/recovery, not the final target:
+python3 scripts/restic-restore.py infra homelab /mnt/recovery/infra
+# Preview first; add --execute to restore verified bytes into staging.
 ```
 
 `RESTIC_PASSWORD` (from root `.env`) must match the other nodes. Keep it off-box.

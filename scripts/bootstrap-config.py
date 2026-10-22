@@ -264,8 +264,9 @@ def configure(node="", root=ROOT, schedule=None, update_time=None):
         "docker_apt_release": release,
         "tailscale_apt_release": "bookworm" if distro.get("ID") == "debian" and release == "trixie" else release,
         "nfs_server_host": addresses["STORAGE_HOST"],
-        "nfs_exports": [{"path": path, "clients": lan, "options": "rw,sync,no_subtree_check,no_root_squash"}
-                        for path in [storage_media, storage_backup]],
+        "nfs_exports": [{"path": path, "clients": client, "options": "rw,sync,no_subtree_check,no_root_squash"}
+                        for path in [storage_media, storage_backup]
+                        for client in [addresses['APPS_HOST'], addresses['INFRA_HOST']]],
         "nfs_mounts": [{"src": addresses["STORAGE_HOST"] + ":" + source, "path": destination}
                        for source, destination in [(storage_media, local_media), (storage_backup, local_backup)]],
     }

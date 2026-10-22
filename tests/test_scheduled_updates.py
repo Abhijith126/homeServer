@@ -3,6 +3,7 @@ import gzip
 import importlib.util
 import io
 import json
+import shutil
 from pathlib import Path
 import subprocess
 import tempfile
@@ -25,6 +26,7 @@ config = module('bootstrap-config')
 
 
 class ScheduleTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which('systemd-analyze'), 'systemd calendar validation runs on Linux CI')
     def test_calendar_expressions_are_valid_systemd_calendars(self):
         for cadence in ('hourly', 'daily', 'weekly', 'monthly'):
             rendered = schedule.timer(cadence)

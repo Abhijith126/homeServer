@@ -1,6 +1,6 @@
 ---
 # portfolio — personal website on the apps node.
-# Downloads the compiled release ZIP; no application build runs on this host.
+# Release ZIP is baked into a local image; runtime needs no downloads.
 name: portfolio
 
 x-logging: &logging
@@ -18,7 +18,11 @@ x-common: &common
 services:
   portfolio:
     <<: *common
-    image: node:24-alpine@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f
+    image: homelab-portfolio:local
+    build:
+      context: .
+      args:
+        PORTFOLIO_REPOSITORY: "${PORTFOLIO_REPOSITORY:-Abhijith126/portfolio}"
     platform: linux/amd64
     container_name: portfolio
     init: true
@@ -31,48 +35,9 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
       HOSTNAME: 0.0.0.0
       PORT: "3000"
-      PORTFOLIO_REPOSITORY: "${PORTFOLIO_REPOSITORY:-Abhijith126/portfolio}"
-      PORTFOLIO_RELEASE: "${PORTFOLIO_RELEASE:-latest}"
     ports:
       - "${PORTFOLIO_PORT:-3000}:3000"
     working_dir: /app
-    entrypoint: ["/bin/sh", "-ec"]
-    command:
-      - |
-        apk add --no-cache curl unzip su-exec
-        repository="$$PORTFOLIO_REPOSITORY"
-        node -e 'if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$$/.test(process.env.PORTFOLIO_REPOSITORY)) process.exit(1)'
-        release="$$PORTFOLIO_RELEASE"
-        if [ "$$release" = latest ]; then
-          release=$$(node -e "
-            fetch('https://api.github.com/repos/' + process.env.PORTFOLIO_REPOSITORY + '/releases/latest')
-              .then(async r => {
-                if (!r.ok) throw new Error('GitHub release lookup: ' + r.status);
-                const j = await r.json();
-                process.stdout.write(j.tag_name);
-              })
-              .catch(e => { console.error(e.message); process.exit(1); });
-          ")
-        fi
-        case "$$release" in
-          ""|*[!a-zA-Z0-9_.-]*) echo "Invalid release tag" >&2; exit 1 ;;
-        esac
-        echo "Downloading portfolio release $$release"
-        base="https://github.com/$$repository/releases/download/$$release"
-        download=$$(mktemp -d)
-        cd "$$download"
-        curl -fL --retry 3 -o portfolio-build.zip "$$base/portfolio-build.zip"
-        curl -fL --retry 3 -o portfolio-build.zip.sha256 "$$base/portfolio-build.zip.sha256"
-        sha256sum -c portfolio-build.zip.sha256
-        # /app belongs to this container; there is no host mount or data volume.
-        rm -rf /app
-        mkdir /app
-        unzip -q portfolio-build.zip -d /app
-        rm -rf "$$download"
-        chown -R node:node /app
-        cd /app
-        echo "Starting portfolio release $$release"
-        exec su-exec node node server.js
     healthcheck:
       test:
         - CMD
