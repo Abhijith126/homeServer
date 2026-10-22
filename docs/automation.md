@@ -70,6 +70,24 @@ All existing Compose stacks are tracked, including Sonarr, Radarr, Lidarr, Bazar
 
 Renovate's update and auto-merge windows are Sunday, 00:00–24:00 Europe/Amsterdam, ahead of the default Monday 03:00 weekly deployments. Existing branches are not updated outside that window (updateNotScheduled=false). The hosted app may still scan on other days; the schedule controls when routine changes and automerges are allowed, not the app's execution cadence. Security alerts or explicit manual requests can bypass routine scheduling. The full Sunday window gives CI and hosted runs time to complete; updates that are not merged before deployment wait for a later deployment. Changing a node's deployment schedule does not automatically change Renovate's repository-wide schedule. Manual merges deploy whenever each node next polls. CI validates configuration, lint, and secrets, but does not test real application startup or data migrations. Make validate and renovate-config required checks in a main branch rule if you want GitHub to enforce them for manual merges too.
 
+## Codex review requests
+
+The Request Codex review workflow posts `@codex review` only on non-draft PRs
+authored by `renovate[bot]`, only when created. New commits, reopening, and marking
+a draft ready do not trigger requests. It posts at most one request per PR,
+using a hidden marker to avoid duplicates on retries. Draft and closed PRs are
+skipped.
+The workflow uses pull_request_target so it can comment on fork PRs; it never
+checks out or executes PR code and only grants pull-request write permission.
+It becomes active once the workflow is present on the default branch.
+
+This requests a review, not a passing review check. A successful workflow only
+confirms that a request was posted or already exists. Codex may not respond to
+GitHub Actions bot comments; this must be verified on a live PR. If it does not,
+post `@codex review` yourself. No OpenAI API key is used. This workflow does not
+block merges or change Renovate's auto-merge policy; updates can merge before a
+review finishes. Do not treat it as a compatibility or deployment safety gate.
+
 ## Everyday operations
 
 ```bash
