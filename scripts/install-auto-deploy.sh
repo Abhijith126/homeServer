@@ -101,7 +101,36 @@ TimeoutStartSec=45min
 UMask=0077
 EOF
 printf '%s\n' "$timer_config" >/etc/systemd/system/homelab-deploy.timer
+cat >/etc/systemd/system/homelab-health.service <<EOF
+[Unit]
+Description=Audit homelab service health and backup freshness
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=$run_user
+WorkingDirectory=$repo_root
+Environment="HOMELAB_SKIP_STACKS=$skip"
+Environment=HOMELAB_BACKUP_MAX_HOURS=120
+ExecStart=/usr/bin/python3 $repo_root/scripts/health-audit.py $node --notify
+TimeoutStartSec=10min
+UMask=0077
+EOF
+cat >/etc/systemd/system/homelab-health.timer <<EOF
+[Unit]
+Description=Check homelab health independently of deployment cadence
+
+[Timer]
+OnBootSec=10min
+OnUnitInactiveSec=15min
+RandomizedDelaySec=30s
+
+[Install]
+WantedBy=timers.target
+EOF
 systemctl daemon-reload
+systemctl enable --now homelab-health.timer
 systemctl enable homelab-deploy.timer
 systemctl restart homelab-deploy.timer
 echo "Installed for $node: $schedule ($timezone, calendar time $update_time)."

@@ -1,0 +1,4 @@
+# Caddyfile is mounted at runtime; Cloudflare credentials must stay on the host.
+*
+!Dockerfile
+!.dockerignore

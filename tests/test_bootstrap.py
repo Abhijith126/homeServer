@@ -28,7 +28,8 @@ class BootstrapTests(unittest.TestCase):
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(source, target)
         (self.root / "scripts").mkdir()
-        shutil.copy(REPO / "scripts/gen-env.sh", self.root / "scripts/gen-env.sh")
+        for filename in ('gen-env.sh', 'stack-policy.py', 'bootstrap-config.py'):
+            shutil.copy(REPO / 'scripts' / filename, self.root / 'scripts' / filename)
         self.answers = {}
         self.optional = {}
         self.extra_skip = ""
@@ -132,6 +133,22 @@ class BootstrapTests(unittest.TestCase):
         self.answers["Local application data directory"] = str(data)
         self.configure("apps")
         self.assertEqual(config.read_env(self.root / ".env")["HOMARR_SECRET_ENCRYPTION_KEY"], "shared-backup-password")
+
+    def test_beszel_agent_enabled_and_configured_on_every_node(self):
+        self.optional["Enable Beszel agent (requires the hub's public key)"] = True
+        for node in ('apps', 'storage', 'infra'):
+            with self.subTest(node=node):
+                # Each subtest represents a separately configured machine.
+                profile = self.root / '.bootstrap/vars.json'
+                if profile.exists():
+                    profile.unlink()
+                data = self.configure(node)
+                self.assertNotIn('beszel-agent', data['bootstrap_skip'])
+                result = self.generate(data)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                env = config.read_env(self.root / 'stacks' / node / 'beszel-agent/.env')
+                self.assertEqual(env['BESZEL_AGENT_KEY'], 'shared-backup-password')
+                self.assertEqual(env['BESZEL_AGENT_PORT'], '45876')
 
     def test_duplicate_addresses_are_rejected_before_writing_environment(self):
         self.answers["Apps node LAN IPv4"] = "192.168.1.120"

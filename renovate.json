@@ -66,6 +66,15 @@
       "datasourceTemplate": "docker",
       "depNameTemplate": "caddy",
       "versioningTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^stacks\\/(infra\\/caddy|apps\\/portfolio)\\/Dockerfile$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>github-tags) depName=(?<depName>[^\\s]+)\\s+ARG (?:CLOUDFLARE_VERSION|PORTFOLIO_RELEASE)=(?<currentValue>[^\\s]+)"
+      ]
     }
   ],
   "packageRules": [
@@ -262,6 +271,34 @@
         "ghcr.io/immich-app/postgres"
       ],
       "allowedVersions": "/^14-/",
+      "automerge": false
+    },
+    {
+      "description": "Local portfolio images are built, not pulled from a registry.",
+      "matchPackageNames": [
+        "homelab-portfolio"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "Portfolio release tags are ordered by their build counter.",
+      "matchPackageNames": [
+        "Abhijith126/portfolio"
+      ],
+      "versioning": "regex:^build-(?<major>\\d+)-[a-f0-9]+$",
+      "automerge": false
+    },
+    {
+      "description": "Cloudflare DNS plugin changes require review.",
+      "matchPackageNames": [
+        "caddy-dns/cloudflare"
+      ],
+      "automerge": false
+    },
+    {
+      "description": "Final safety override: review-only infrastructure images must never inherit catch-all automerge.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["caddy", "mazzolino/restic", "portainer/portainer-ee", "portainer/agent"],
       "automerge": false
     }
   ],

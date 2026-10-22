@@ -33,11 +33,15 @@ After that the crons run automatically.
 
 ```bash
 docker exec restic snapshots                          # list all snapshots
-docker exec restic restic restore latest --target /   # in place (stop the app first)
-docker exec restic restic restore <id> --target /tmp/r --tag media   # inspect first
+# From the homeServer checkout; create /mnt/recovery, not the final target:
+python3 scripts/restic-restore.py storage homelab /mnt/recovery/storage
+# Preview first; add --execute to restore verified bytes into staging.
+python3 scripts/restic-restore.py storage media /mnt/recovery/media --snapshot <id>
 ```
 
-For media, the snapshot restores `/mnt/nas/{Gallery,Files,Drive}` back under `--target`.
+Media is staged under `nas/{Gallery,Files,Drive}`; app files under `data/`.
+Stop affected apps before copying selected files into the configured host paths.
+See [disaster recovery](../../../docs/disaster-recovery.md) for the full workflow.
 
 ## Config
 

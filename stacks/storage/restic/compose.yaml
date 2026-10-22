@@ -64,7 +64,7 @@ services:
       RESTIC_BACKUP_ARGS: --tag media
       RESTIC_FORGET_ARGS: --keep-within 1m --prune
     volumes:
-      - /mnt/nas:/nas:ro
+      - ${MEDIA_ROOT}:/nas:ro
       - ${RESTIC_REPO_PATH}:/repo
     labels:
       homelab.managed: "true"

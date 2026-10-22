@@ -24,7 +24,9 @@ docker compose up -d
 
 ## Scenario 2 — A disk in the RAID fails
 
-Replace the disk and let the array rebuild (mdadm/ZFS). Media stays available during rebuild. If the whole array is lost, restore the media from the restic `media` snapshot (`docker exec restic-media restic restore latest --tag media --target /`, which recreates `/mnt/nas/{Gallery,Files,Drive}`) — provided `/mnt/hdd2` survived; otherwise from your off-site copy.
+Replace the disk and let the array rebuild (mdadm/ZFS). If the whole array is lost,
+restore the storage node's media snapshot with the staged recovery helper below,
+provided the backup disk survived; otherwise use an off-site copy.
 
 ## Scenario 3 — Rebuild a node from zero
 
@@ -52,10 +54,14 @@ flowchart TB
    cp .env.example .env && $EDITOR .env      # restore secrets, incl. RESTIC_PASSWORD
    make config                               # regenerate per-stack .env files
    cd stacks/<node>/restic && docker compose up -d
-   docker exec restic restic restore latest --tag homelab --target /
+   cd ~/homeServer
+   # Replace apps with the actual node. Create only the parent /mnt/recovery first.
+   python3 scripts/restic-restore.py apps homelab /mnt/recovery/apps
+   # Review the preview, then repeat with --execute.
    ```
 4. **Restore databases.**
-   - **Immich:** the DB dumps live in the restored `Gallery/backups/`. Bring Immich up, then load the newest dump per the Immich docs (or `stacks/storage/immich/restore.sh`). The photo library on `/mnt/nas/Gallery` comes back from the `media` snapshot: `docker exec restic-media restic restore latest --tag media --target /`.
+   - **Media:** on storage, use `python3 scripts/restic-restore.py storage media /mnt/recovery/media --execute`. Files are staged under `/mnt/recovery/media/nas/`.
+   - **Immich:** built-in dumps are in the restored `nas/Gallery/backups/`. Follow the restore instructions for the exact release and dump format. Pre-update `pg_dumpall` dumps in `NFS_BACKUP/immich` are separate. Do not restore over a running database or assume an image downgrade reverses migrations.
 5. **Deploy.** `docker compose up -d` in each stack (or re-add the Portainer Git stacks).
 6. **Re-point the network.**
    - Router DHCP DNS → infra node IP (Pi-hole).
@@ -82,6 +88,29 @@ flowchart TB
 - [ ] A fresh `docker exec restic backup` succeeds and `docker exec restic restic check` passes
 
 ## Keep off-box
+
+### Staged recovery and restore drills
+
+Never restore with `docker exec ... --target /` in backup containers: `/data` and
+`/nas` are intentionally read-only. The helper uses a one-off container with a
+separate writable `/restore` mount, filters by host and tag, and verifies bytes.
+It refuses existing destinations and defaults to preview. Use `--snapshot ID`
+for an exact snapshot. Execution validates snapshot metadata against both host
+and tag, rejects ambiguous IDs, and resolves latest to a full ID before creating
+the destination. Preview does not query the repository. Create the parent directory first; allow enough staging
+space for the full snapshot. Failed staging directories are retained; retry into
+a new directory. Nothing is copied into live application data automatically.
+
+App files appear under the staging directory's `data/` subdirectory, media under
+`nas/`. Stop affected apps before copying selected data into `DOCKER_DATA` or
+`MEDIA_ROOT`. Preserve the previous data directory before replacing it.
+
+CI restores from a disposable encrypted restic repository containing two hosts,
+verifying host selection and recovered bytes. Also test real snapshots and DB
+imports on an isolated host periodically: repository integrity does not prove
+application recovery. Off-site copies remain an operator responsibility.
+
+### Credentials
 
 Store these somewhere **not** on the homelab (password manager / encrypted vault):
 

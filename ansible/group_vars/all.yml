@@ -15,6 +15,11 @@ ssh_disable_password_auth: false
 # ── Firewall ──
 ufw_enabled: true
 lan_cidr: "192.168.0.0/16"
+# Enable only after reviewing docs/network-security.md and testing allowlists.
+docker_firewall_enabled: false
+docker_allowed_sources: ["{{ lan_cidr }}"]
+docker_public_tcp: []
+docker_public_udp: []
 
 # ── Docker ──
 # Debian 13 (trixie) has no Docker apt suite yet — override to "bookworm" for
@@ -38,10 +43,16 @@ portainer_agent_version: "2.45.2"   # match the Portainer BE server (stacks/infr
 nfs_server_host: 192.168.1.120
 nfs_exports:
   - path: /mnt/nas
-    clients: "{{ lan_cidr }}"
+    clients: "192.168.1.121"
     options: "rw,sync,no_subtree_check,no_root_squash"
   - path: /mnt/hdd2
-    clients: "{{ lan_cidr }}"
+    clients: "192.168.1.121"
+    options: "rw,sync,no_subtree_check,no_root_squash"
+  - path: /mnt/nas
+    clients: "192.168.1.122"
+    options: "rw,sync,no_subtree_check,no_root_squash"
+  - path: /mnt/hdd2
+    clients: "192.168.1.122"
     options: "rw,sync,no_subtree_check,no_root_squash"
 nfs_mounts:
   - src: "{{ nfs_server_host }}:/mnt/nas"
