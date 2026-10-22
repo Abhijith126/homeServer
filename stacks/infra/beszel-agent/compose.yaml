@@ -36,5 +36,6 @@ services:
     # No healthcheck: the image is distroless (no shell/curl to run one).
     labels:
       homelab.managed: "true"
+      homelab.node: "infra"
       homelab.stack: "beszel-agent"
       homelab.category: "monitoring"

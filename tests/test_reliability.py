@@ -25,6 +25,7 @@ restore = module('restic-restore')
 health = module('health-audit')
 retention = module('image-retention')
 firewall = module('docker-firewall')
+policy = module('stack-policy')
 
 
 class BackupSafetyTests(unittest.TestCase):
@@ -73,6 +74,33 @@ class BackupSafetyTests(unittest.TestCase):
 
 
 class RestoreTests(unittest.TestCase):
+    def test_explicit_snapshot_validates_host_tag_and_ambiguity(self):
+        snapshots = [
+            {'id': 'a' * 64, 'hostname': 'apps', 'tags': ['homelab'], 'time': '2026-01-01T00:00:00Z'},
+            {'id': 'b' * 64, 'hostname': 'infra', 'tags': ['homelab'], 'time': '2026-01-02T00:00:00Z'},
+            {'id': 'c' * 64, 'hostname': 'storage', 'tags': ['media'], 'time': '2026-01-03T00:00:00Z'},
+        ]
+        self.assertEqual(restore.select_snapshot(snapshots, 'apps', 'homelab', 'aaaaaaaa'), 'a' * 64)
+        self.assertEqual(restore.select_snapshot(snapshots, 'apps', 'homelab', 'latest'), 'a' * 64)
+        for ident in ['bbbbbbbb', 'cccccccc', 'dddddddd']:
+            with self.assertRaises(ValueError):
+                restore.select_snapshot(snapshots, 'apps', 'homelab', ident)
+        with self.assertRaises(ValueError):
+            restore.select_snapshot(snapshots, 'storage', 'homelab', 'cccccccc')
+        with self.assertRaises(ValueError):
+            restore.select_snapshot(snapshots + [dict(snapshots[0], id='a' * 63 + 'b')], 'apps', 'homelab', 'aaaaaaaa')
+
+    def test_wrong_snapshot_is_rejected_before_creating_destination(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / 'new'
+            listing = json.dumps([{'id': 'b' * 64, 'hostname': 'infra', 'tags': ['homelab']}])
+            with patch.object(restore.subprocess, 'check_output', return_value=listing), \
+                    patch.object(restore.subprocess, 'run') as run:
+                with self.assertRaises(ValueError):
+                    restore.restore('apps', 'homelab', 'bbbbbbbb', target, execute=True)
+                run.assert_not_called()
+            self.assertFalse(target.exists())
+
     def test_plan_requires_new_target_and_explicit_host(self):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):
@@ -104,8 +132,13 @@ class RestoreTests(unittest.TestCase):
             restic('backup', '--host', 'apps', '--tag', 'homelab', str(data))
             sample.write_text('wrong node')
             restic('backup', '--host', 'infra', '--tag', 'homelab', str(data))
+            snapshots = json.loads(restic('snapshots', '--json').stdout)
+            wrong = next(s['id'] for s in snapshots if s['hostname'] == 'infra')
+            with self.assertRaises(ValueError):
+                restore.select_snapshot(snapshots, 'apps', 'homelab', wrong)
+            selected = restore.select_snapshot(snapshots, 'apps', 'homelab', 'latest')
             target = root / 'restored'
-            command = restore.command('apps', 'homelab', 'latest', target)
+            command = restore.command('apps', 'homelab', selected, target)
             args = command[command.index('restore'):]
             args[args.index('--target') + 1] = str(target)
             restic(*args)
@@ -113,6 +146,42 @@ class RestoreTests(unittest.TestCase):
 
 
 class HealthTests(unittest.TestCase):
+    def test_unconfigured_agent_is_not_a_health_incident(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            stack = root / 'stacks/apps/beszel-agent'
+            stack.mkdir(parents=True)
+            (stack / 'compose.yaml').write_text('fixture')
+            with patch.object(health, 'ROOT', root), patch.object(health, 'compose') as compose:
+                self.assertEqual(health.audit('apps', set()), [])
+                compose.assert_not_called()
+
+    def test_lock_defers_check_but_cached_staleness_still_alerts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            now = datetime.now(timezone.utc)
+            with patch.object(health, 'ROOT', root), patch.object(health, 'compose') as compose:
+                compose.return_value = json.dumps([{'time': now.isoformat()}])
+                self.assertIsNone(health.backup_freshness(root, 'restic', 'apps', 'homelab', 120))
+                compose.side_effect = subprocess.CalledProcessError(11, 'restic')
+                self.assertIsNone(health.backup_freshness(root, 'restic', 'apps', 'homelab', 120))
+                cache = root / '.deploy-state/apps/backup-homelab.json'
+                cache.write_text(json.dumps({'snapshots': [{'time': (now - timedelta(hours=121)).isoformat()}]}))
+                self.assertIn('no successful snapshot', health.backup_freshness(root, 'restic', 'apps', 'homelab', 120))
+
+    def test_initial_lock_is_deferred_but_persistent_lock_and_other_errors_are_not_hidden(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with patch.object(health, 'ROOT', root), patch.object(health, 'compose') as compose:
+                compose.side_effect = subprocess.CalledProcessError(11, 'restic')
+                self.assertIsNone(health.backup_freshness(root, 'restic', 'apps', 'homelab', 120))
+                cache = root / '.deploy-state/apps/backup-homelab.json'
+                cache.write_text(json.dumps({'deferred_since': (datetime.now(timezone.utc) - timedelta(hours=121)).isoformat()}))
+                self.assertIn('repository locked', health.backup_freshness(root, 'restic', 'apps', 'homelab', 120))
+                compose.side_effect = subprocess.CalledProcessError(1, 'restic')
+                with self.assertRaises(subprocess.CalledProcessError):
+                    health.backup_freshness(root, 'restic', 'apps', 'homelab', 120)
+
     def test_missing_stopped_unhealthy_and_scaled_services_are_detected(self):
         services = {'db': {}, 'web': {'deploy': {'replicas': 2}}}
         failures = health.service_failures(services, [{'Service': 'db', 'State': 'running', 'Health': 'unhealthy'},
@@ -163,6 +232,13 @@ class HealthTests(unittest.TestCase):
 
 
 class RetentionTests(unittest.TestCase):
+    def test_agent_labels_enter_managed_inventory(self):
+        for node in ('apps', 'storage', 'infra'):
+            containers = [{'Image': 'agent-image', 'Config': {'Labels': {'homelab.node': node}}}]
+            with patch.object(retention, 'output', side_effect=['agent-container', json.dumps(containers)]):
+                used, managed = retention.inventory(node)
+            self.assertIn('agent-image', managed)
+
     def test_age_is_since_disuse_not_image_creation(self):
         removed = []
         state = retention.reconcile({}, {'old'}, {'old'}, 0)
@@ -197,12 +273,25 @@ class FirewallTests(unittest.TestCase):
         self.assertIn('--ctorigdstport 443', v4)
         self.assertIn('-i tailscale0 -j RETURN', v4)
         self.assertIn('-o br+ -j DROP', v4)
-        self.assertNotIn('-F', v4)
+        self.assertEqual([line for line in v4.splitlines() if line.startswith('-F')], ['-F HOMELAB-DOCKER'])
+        self.assertLess(v4.index('-F HOMELAB-DOCKER'), v4.index('-A HOMELAB-DOCKER'))
 
     def test_invalid_sources_and_ports_are_rejected(self):
         for settings in [{'allowed_sources': ['invalid']}, {'allowed_sources': [], 'public_tcp': ['443;bad']}]:
             with self.assertRaises(ValueError):
                 firewall.rules(settings, 4)
+
+
+class StackPolicyTests(unittest.TestCase):
+    def test_missing_empty_placeholder_quoted_keys_and_explicit_skip(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for content in ['', 'BESZEL_AGENT_KEY=', 'BESZEL_AGENT_KEY=CHANGEME', "BESZEL_AGENT_KEY='CHANGEME'"]:
+                (root / '.env').write_text(content)
+                self.assertIn('beszel-agent', policy.effective_skip(root, {'portainer'}))
+            (root / '.env').write_text("BESZEL_AGENT_KEY='ssh-ed25519 example-public-key'")
+            self.assertEqual(policy.effective_skip(root, {'portainer'}), {'portainer'})
+            self.assertIn('beszel-agent', policy.effective_skip(root, {'beszel-agent'}))
 
 
 if __name__ == '__main__':

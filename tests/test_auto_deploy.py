@@ -115,6 +115,31 @@ exit 0
         self.assertEqual(path.read_text(), "local edit\n")
         self.assertEqual(self.lines(), "")
 
+    def test_new_agent_does_not_block_existing_nodes_and_configured_key_enables_it(self):
+        for node in ('apps', 'storage'):
+            stack = self.origin / 'stacks' / node / 'beszel-agent'
+            stack.mkdir()
+            (stack / 'compose.yaml').write_text('services:\n  agent:\n    image: example:1\n')
+            (stack / '.env.example').write_text('BESZEL_AGENT_KEY=CHANGEME\n')
+        # Simulate an old installed updater without the new top-level skip hook:
+        # gen-env and deploy-node must independently apply the shared policy.
+        script = self.origin / 'scripts/auto-deploy.sh'
+        script.write_text(script.read_text().replace('    skip="$(python3 scripts/stack-policy.py --skip "$skip")"\n', ''))
+        self.run_git(self.origin, 'add', '.')
+        self.run_git(self.origin, 'commit', '-m', 'Discover optional agent')
+        self.run_git(self.checkout, 'pull', '--ff-only')
+        (self.checkout / '.env').write_text('SECRET=configured\nUNRELATED=configured\n')
+        for node in ('apps', 'storage'):
+            result = self.deploy(node)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertFalse((self.checkout / 'stacks' / node / 'beszel-agent/.env').exists())
+        self.assertNotIn('beszel-agent: compose', self.lines())
+        (self.checkout / '.env').write_text('SECRET=configured\nUNRELATED=configured\nBESZEL_AGENT_KEY=valid-public-key\n')
+        for node in ('apps', 'storage'):
+            result = self.deploy(node)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.lines().count('beszel-agent: compose up'), 2)
+
     def test_local_secret_changes_trigger_deployment(self):
         self.assertEqual(self.deploy().returncode, 0)
         log = self.lines()

@@ -294,6 +294,12 @@
         "caddy-dns/cloudflare"
       ],
       "automerge": false
+    },
+    {
+      "description": "Final safety override: review-only infrastructure images must never inherit catch-all automerge.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["caddy", "mazzolino/restic", "portainer/portainer-ee", "portainer/agent"],
+      "automerge": false
     }
   ],
   "updateNotScheduled": false

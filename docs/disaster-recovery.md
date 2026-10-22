@@ -95,7 +95,9 @@ Never restore with `docker exec ... --target /` in backup containers: `/data` an
 `/nas` are intentionally read-only. The helper uses a one-off container with a
 separate writable `/restore` mount, filters by host and tag, and verifies bytes.
 It refuses existing destinations and defaults to preview. Use `--snapshot ID`
-for an exact snapshot. Create the parent directory first; allow enough staging
+for an exact snapshot. Execution validates snapshot metadata against both host
+and tag, rejects ambiguous IDs, and resolves latest to a full ID before creating
+the destination. Preview does not query the repository. Create the parent directory first; allow enough staging
 space for the full snapshot. Failed staging directories are retained; retry into
 a new directory. Nothing is copied into live application data automatically.
 

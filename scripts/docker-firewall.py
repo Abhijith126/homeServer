@@ -11,7 +11,9 @@ def rules(settings, version):
     sources = [str(ipaddress.ip_network(s, strict=False)) for s in settings['allowed_sources']
                if ipaddress.ip_network(s, strict=False).version == version]
     chain = 'HOMELAB-DOCKER'
-    lines = ['*filter', f':{chain} - [0:0]',
+    # Declare and explicitly flush only our chain inside the same transaction.
+    # --noflush preserves the rest of the table, not this replacement policy.
+    lines = ['*filter', f':{chain} - [0:0]', f'-F {chain}',
              f'-A {chain} -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN',
              f'-A {chain} -i docker0 -j RETURN', f'-A {chain} -i br+ -j RETURN',
              f'-A {chain} -i tailscale0 -j RETURN']

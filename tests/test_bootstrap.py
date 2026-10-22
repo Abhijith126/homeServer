@@ -28,7 +28,8 @@ class BootstrapTests(unittest.TestCase):
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(source, target)
         (self.root / "scripts").mkdir()
-        shutil.copy(REPO / "scripts/gen-env.sh", self.root / "scripts/gen-env.sh")
+        for filename in ('gen-env.sh', 'stack-policy.py', 'bootstrap-config.py'):
+            shutil.copy(REPO / 'scripts' / filename, self.root / 'scripts' / filename)
         self.answers = {}
         self.optional = {}
         self.extra_skip = ""

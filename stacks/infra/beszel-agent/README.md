@@ -6,10 +6,12 @@ Reports host + docker metrics to the [`beszel`](../beszel/) hub. **Deploy this o
 
 Each node has a `beszel-agent` folder under `stacks/<node>/`, so node-local
 environment generation and scheduled deployments discover the agent. Renovate
-tracks all three image pins; tests require identical Compose files and environment
-templates to keep their versions and configuration aligned.
+tracks all three image pins; tests require matching configuration except for the
+per-node homelab.node label, which makes agent images eligible for retention.
 
 For existing apps/storage nodes, set `BESZEL_AGENT_KEY` in that node's root `.env`.
+Until a key is configured, automated generation, deployment and health checks
+skip the optional agent without blocking other apps or stopping existing agents.
 If the agent is skipped, run `./scripts/setup.sh --reconfigure` and enable it.
 The next merged change is deployed on the node's schedule, or run
 `make auto-deploy NODE=apps` (use `storage` on ryzen) to reconcile immediately.
