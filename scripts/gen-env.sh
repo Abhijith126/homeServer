@@ -56,6 +56,7 @@ if [[ ! -f "$root_env" ]]; then
 fi
 
 # Load the root .env into an associative array (first '=' splits key/value).
+skip="$(python3 scripts/stack-policy.py --skip "$skip")"
 declare -A root_vars
 while IFS= read -r line || [[ -n "$line" ]]; do
     line="${line%$'\r'}"

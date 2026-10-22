@@ -10,6 +10,9 @@ from pathlib import Path
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
+spec = importlib.util.spec_from_file_location('stack_policy', ROOT / 'scripts/stack-policy.py')
+policy = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(policy)
 
 
 def compose(stack, *args):
@@ -44,7 +47,34 @@ def fresh(snapshots, now, max_hours):
     return bool(times) and 0 <= (now - max(times)).total_seconds() <= max_hours * 3600
 
 
+def backup_freshness(stack, service, node, tag, max_hours):
+    now = datetime.now(timezone.utc)
+    path = ROOT / '.deploy-state' / node / f'backup-{tag}.json'
+    cached = json.loads(path.read_text()) if path.exists() else {}
+    try:
+        snapshots = json.loads(compose(stack, 'exec', '-T', service, 'restic',
+            'snapshots', '--json', '--host', node, '--tag', tag)) or []
+        cached = {'snapshots': [{'time': s['time']} for s in snapshots]}
+    except subprocess.CalledProcessError as error:
+        if error.returncode != 11:
+            raise
+        print(f'DEFER restic/{tag}: repository locked; recheck next tick using last-known freshness')
+        cached.setdefault('deferred_since', now.isoformat())
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix('.tmp')
+    temporary.write_text(json.dumps(cached) + '\n')
+    temporary.chmod(0o600)
+    os.replace(temporary, path)
+    if 'snapshots' in cached:
+        if not fresh(cached['snapshots'], now, max_hours):
+            return f'restic/{tag}: no successful snapshot within {max_hours:g} hours'
+    elif (now - datetime.fromisoformat(cached['deferred_since'])).total_seconds() > max_hours * 3600:
+        return f'restic/{tag}: repository locked without a successful freshness check for {max_hours:g} hours'
+    return None
+
+
 def audit(node, skip, max_hours=120):
+    skip = policy.effective_skip(ROOT, skip)
     failures = []
     for manifest in sorted((ROOT / 'stacks' / node).glob('*/compose.yaml')):
         stack = manifest.parent
@@ -58,10 +88,9 @@ def audit(node, skip, max_hours=120):
                 for service, tag in [('restic', 'homelab'), ('restic-media', 'media')]:
                     if service not in services:
                         continue
-                    snapshots = json.loads(compose(stack, 'exec', '-T', service, 'restic',
-                        'snapshots', '--json', '--host', node, '--tag', tag)) or []
-                    if not fresh(snapshots, datetime.now(timezone.utc), max_hours):
-                        failures.append(f'restic/{tag}: no successful snapshot within {max_hours:g} hours')
+                    failure = backup_freshness(stack, service, node, tag, max_hours)
+                    if failure:
+                        failures.append(failure)
         except (OSError, ValueError, KeyError, subprocess.SubprocessError):
             failures.append(f'{stack.name}: audit unavailable (check Compose configuration, Docker and backup access)')
     if not list((ROOT / 'stacks' / node).glob('*/compose.yaml')):
@@ -113,5 +142,5 @@ if __name__ == '__main__':
         failures = audit(args.node, set(args.skip.split()), args.max_backup_hours)
         if args.notify:
             notify(args.node, failures, directory)
-        print('\n'.join(failures) if failures else 'Health and backup freshness checks passed.')
+        print('\n'.join(failures) if failures else 'No failures detected; any deferred freshness checks are logged above.')
         raise SystemExit(bool(failures))

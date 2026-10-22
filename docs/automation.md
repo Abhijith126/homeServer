@@ -36,9 +36,13 @@ Retention is measured from observed disuse, not image creation age. State lives 
 A new folder under stacks/<node>/<app> is discovered automatically on the next merge; no new deployment entry is needed. Use the existing new-app scaffolder and provide any new secrets in the node's root .env. Removed services within a Compose project are cleaned up as orphans. Removing a whole stack folder does not delete that project's containers or data; retire whole stacks deliberately with Compose down, without -v.
 
 Beszel agents have a stack in each node folder, so apps, storage, and infra all
-receive Renovate's agent updates. Existing nodes must have BESZEL_AGENT_KEY set
-in the root .env and must not skip beszel-agent. Reconfigure setup to enable a
-previously skipped agent. CI checks that all three agent manifests stay aligned.
+receive Renovate's agent updates. Without a configured BESZEL_AGENT_KEY in the
+root .env, generation, deployment and health auditing automatically skip the
+optional agent, leaving any existing container untouched. Other stacks continue
+updating even on the first run of an old timer after pulling this change. Set the
+key to enable reconciliation; an explicit beszel-agent skip still wins. Each
+manifest carries its own node label for image retention; CI checks the remaining
+configuration and image pins stay aligned.
 
 All Compose services use restart: unless-stopped. Docker restarts exited
 containers and starts them after a daemon/host restart, unless explicitly
@@ -55,7 +59,8 @@ Install the free hosted [Renovate GitHub app](https://github.com/apps/renovate) 
 
 | Update | Merge policy |
 | --- | --- |
-| Docker minor/patch-only batch | Auto-merge after successful CI |
+| Docker minor/patch-only batch without review-only images | Auto-merge after successful CI |
+| Caddy, Restic, or Portainer in a batch | Review required, including minor/patch updates |
 | Major, digest, or initial pin in the batch | Review the whole batch |
 | Immich PostgreSQL or Valkey changes | Review the whole batch against Immich upstream Compose |
 
@@ -114,6 +119,12 @@ The default backup freshness window is 120 hours, allowing the Wed/Sun schedule
 plus grace. Override HOMELAB_BACKUP_MAX_HOURS in the health service for different
 schedules. Skipped restic stacks are not checked. Freshness does not prove data
 consistency or restorability.
+
+Restic lock contention (exit 11) during maintenance defers the query until the
+next tick, without triggering a spurious incident/recovery pair. Last-known
+snapshot timestamps still age normally and alert when stale. If no prior result
+exists, repeated lock deferrals alert after the freshness window. Other errors
+remain failures; no repository locks are removed or bypassed.
 
 Alerts use existing root .env SMTP settings. Unchanged health stays quiet;
 changed failures/recovery notify. Failed delivery retries for ongoing failures.

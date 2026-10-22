@@ -32,6 +32,9 @@ jobs:
       - name: Test bootstrap, scheduling, and deployments
         run: python3 -m unittest discover -s tests -p 'test_*.py'
 
+      - name: Test firewall revocation in an isolated network namespace
+        run: sudo python3 -m unittest discover -s tests -p 'test_firewall_linux.py'
+
       - name: Validate local provisioning playbook
         run: ansible-playbook -i localhost, ansible/bootstrap.yml --syntax-check
         env:

@@ -35,6 +35,8 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+skip="$(python3 scripts/stack-policy.py --skip "$skip")" || exit 1
+
 report_step() {
     if [[ -n "${HOMELAB_REPORT_STEP_FILE:-}" ]]; then
         printf '%s\n' "$1" >"$HOMELAB_REPORT_STEP_FILE"

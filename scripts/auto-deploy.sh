@@ -58,6 +58,7 @@ main() {
 
     # Portainer is optional and excluded by default. Override in the service.
     local skip="${HOMELAB_SKIP_STACKS-portainer}"
+    skip="$(python3 scripts/stack-policy.py --skip "$skip")"
     fingerprint="$({
         printf '%s\n' "$revision" "$node" "$skip"
         sha256sum .env

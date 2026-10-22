@@ -28,8 +28,12 @@ class AgentStackTests(unittest.TestCase):
                 self.assertIn(directory / 'compose.yaml',
                               list((ROOT / 'stacks' / node).glob('*/compose.yaml')))
                 for filename in ('compose.yaml', '.env.example'):
-                    self.assertEqual((directory / filename).read_text(),
-                                     (canonical / filename).read_text())
+                    actual = (directory / filename).read_text()
+                    expected = (canonical / filename).read_text()
+                    if filename == 'compose.yaml':
+                        self.assertIn(f'homelab.node: "{node}"', actual)
+                        actual = actual.replace(f'homelab.node: "{node}"', 'homelab.node: "infra"')
+                    self.assertEqual(actual, expected)
 
     def test_all_rendered_services_restart_automatically(self):
         command = compose_command()
