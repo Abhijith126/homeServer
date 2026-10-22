@@ -1,0 +1,48 @@
+name: Request Codex review
+
+on:
+  pull_request_target:
+    types: [opened]
+
+# This workflow only uses GitHub metadata. Never check out or execute PR code
+# with the write-capable token available to pull_request_target.
+permissions:
+  pull-requests: write
+
+concurrency:
+  group: codex-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  request-review:
+    if: github.event.pull_request.user.login == 'renovate[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Request review once when the PR is created
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const eventPr = context.payload.pull_request;
+            const { data: pr } = await github.rest.pulls.get({
+              owner, repo, pull_number: eventPr.number,
+            });
+            if (pr.user.login !== 'renovate[bot]' || pr.state !== 'open' || pr.draft) {
+              core.info('Skipping a non-Renovate, draft, or closed PR.');
+              return;
+            }
+            const marker = '<!-- codex-review-request -->';
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number: pr.number, per_page: 100,
+            });
+            if (comments.some(comment =>
+              comment.user?.login === 'github-actions[bot]' &&
+              comment.body?.includes(marker))) {
+              core.info('Already requested review for this PR.');
+              return;
+            }
+            await github.rest.issues.createComment({
+              owner, repo, issue_number: pr.number,
+              body: `@codex review\n\n${marker}`,
+            });
