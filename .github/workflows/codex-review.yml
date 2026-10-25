@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Request review once when the PR is created
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const { owner, repo } = context.repo;
