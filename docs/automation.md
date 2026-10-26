@@ -55,6 +55,16 @@ Deployments across nodes are independent and are not atomic. If one stack fails,
 
 ## Renovate update policy
 
+Commit messages and PR descriptions should not include co-author or AI/tool
+credit footers. AGENTS.md applies this instruction to Codex and other assistants.
+Renovate explicitly uses an empty commit body and no configured commit trailers.
+Do not add attribution trailers through presets or package rules (Renovate merges
+trailer arrays, so an empty top-level array cannot erase inherited trailers).
+These settings do not change Renovate's actual Git author identity or prevent
+GitHub from generating co-author text during squash merges. Inspect the final
+squash message when merging manually. Renovate can still appear as a contributor;
+this is not a guarantee of an owner-only contributor list.
+
 Install the free hosted [Renovate GitHub app](https://github.com/apps/renovate) with access to homeServer and select Renovate Only / Scan and Alert. It reads renovate.json; no update-bot container or GitHub token is needed on the nodes.
 
 | Update | Merge policy |
