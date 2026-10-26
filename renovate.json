@@ -13,6 +13,8 @@
     "stacks/_template/**"
   ],
   "dependencyDashboard": true,
+  "commitBody": "",
+  "commitTrailers": [],
   "timezone": "Europe/Amsterdam",
   "schedule": [
     "* * * * 0"
