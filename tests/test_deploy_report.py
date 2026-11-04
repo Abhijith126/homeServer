@@ -36,7 +36,7 @@ class ReportTests(unittest.TestCase):
     def test_html_tables_versions_recreation_timezone_and_escaping(self):
         old = {'container': 'one', 'image': 'registry:5000/app:v1@sha256:old', 'digest': 'sha256:old'}
         updated = dict(old, container='two', image='registry:5000/app:v2@sha256:new', digest='sha256:new')
-        data = {'node': 'apps', 'host': '<script>host</script>', 'exit_code': 0,
+        data = {'node': 'docker', 'host': '<script>host</script>', 'exit_code': 0,
                 'started': '2026-10-02T22:24:27+00:00', 'finished': '2026-10-02T22:26:45+00:00',
                 'revision': 'b030010471842160d48b805ee6304b6ee65eaefe',
                 'before': {'homarr': old, 'bazarr': old},
@@ -69,13 +69,13 @@ class ReportTests(unittest.TestCase):
                 patch.object(report.config, 'read_env', return_value={}), \
                 patch.object(report, 'send') as send:
             directory = Path(tmp)
-            report.begin('apps', directory)
-            report.finish('apps', directory, 0)
+            report.begin('docker', directory)
+            report.finish('docker', directory, 0)
             send.assert_not_called()
-            report.begin('apps', directory)
+            report.begin('docker', directory)
             (directory / 'step').write_text('Git sync')
             send.side_effect = RuntimeError('secret must never enter history')
-            report.finish('apps', directory, 1)
+            report.finish('docker', directory, 1)
             send.assert_called_once()
             history = sorted((directory / 'history').glob('*.json'))
             data = json.loads(history[-1].read_text())

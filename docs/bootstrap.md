@@ -6,13 +6,12 @@ On a Debian 12+ or Ubuntu 24.04+ machine with systemd, curl, a normal sudo user,
 bash <(curl -fsSL https://raw.githubusercontent.com/Abhijith126/homeServer/main/scripts/setup.sh) --schedule weekly
 ```
 
-The script asks which node this machine is: storage, apps, or infra. You can pass the role explicitly:
+The script asks which node this machine is: storage or docker. You can pass the role explicitly:
 
 | Machine | Command |
 | --- | --- |
 | Storage / ryzen | ./scripts/setup.sh storage |
-| Applications | ./scripts/setup.sh apps |
-| Infrastructure | ./scripts/setup.sh infra |
+| Lenovo Docker VM | ./scripts/setup.sh docker |
 
 Run storage first so its NFS exports are ready before setting up the clients. Keep the checkout owned by the user running the script. Run without sudo; the script requests sudo for system changes.
 
@@ -20,9 +19,9 @@ Run storage first so its NFS exports are ready before setting up the clients. Ke
 
 - Installs prerequisites and Ansible in a local virtual environment.
 - Uses the current login user and OS, rather than the checked-in personal inventory.
-- Asks for the three LAN addresses, subnet, local data paths, and storage export/mount paths.
+- Asks for the two Docker LAN addresses, subnet, local data paths, and storage export/mount paths.
 - Installs standard Docker Engine and Compose, log rotation, firewall rules, and shared networks.
-- Sets up NFS exports on storage and persistent NFS mounts on apps/infra.
+- Sets up NFS exports on storage and persistent NFS mounts on docker.
 - Creates application data/media directories and node aliases in /etc/hosts.
 - Configures Pi-hole's local domain route and Caddy's upstream addresses.
 - Offers internal TLS or Cloudflare DNS-01, with a token prompt when Cloudflare is selected.
@@ -33,11 +32,11 @@ The timer then checks main on the selected schedule (weekly by default), deploys
 
 ## Values you provide once
 
-Use consistent LAN addresses, export directories, and media UID/GID across all three runs. The backup password must be identical on every node.
+Use consistent LAN addresses, export directories, and media UID/GID across both Docker hosts. The backup password must be identical on every node.
 
 The wizard offers qBittorrent/VPN, Beszel agent, and backups where those stacks exist. Services whose external credentials are unavailable can be skipped, and enabled later by rerunning with --reconfigure. Other stacks can be skipped by name. Portfolio prompts for the repository publishing the standalone ZIP and checksum, so a fork can use its own application.
 
-Secrets and generated settings stay in the ignored root .env, .bootstrap directory, and infra-only cloudflare.env. They are not written to inventory.ini or committed. The temporary Tailscale auth-key file is removed when setup exits. For already configured services, setup reuses credentials from the root .env or existing stack .env files. If existing Immich or Homarr data is detected without its credential, it asks for the current password/key instead of generating a replacement. Rerunning setup preserves configured passwords and encryption keys.
+Secrets and generated settings stay in the ignored root .env, .bootstrap directory, and docker-only cloudflare.env. They are not written to inventory.ini or committed. The temporary Tailscale auth-key file is removed when setup exits. For already configured services, setup reuses credentials from the root .env or existing stack .env files. If existing Immich or Homarr data is detected without its credential, it asks for the current password/key instead of generating a replacement. Rerunning setup preserves configured passwords and encryption keys.
 
 Initial generated credentials can be read from the node's root .env. App-specific first-run account creation, adding indexers/download-client connections, and logging in to external providers remain application administration.
 
@@ -47,7 +46,7 @@ Have the OS installed and your LAN addresses assigned or reserved before running
 
 Do not point new services at existing production data without checking the paths and versions. Snap Docker is detected and left alone; migrate its data to standard Docker before using this bootstrap on that machine.
 
-Once infra is running, point clients/router DNS at its LAN address to use Pi-hole and the local service names. For internal TLS, trust Caddy's local CA on client devices. For Cloudflare certificates, provide a suitable public domain and API token. Router DHCP settings, public DNS records, and provider accounts require access to those external systems.
+Once docker is running, point clients/router DNS at its LAN address to use Pi-hole and the local service names. For internal TLS, trust Caddy's local CA on client devices. For Cloudflare certificates, provide a suitable public domain and API token. Router DHCP settings, public DNS records, and provider accounts require access to those external systems.
 
 The currently published portfolio ZIP targets amd64; other hardware needs a matching application build or can skip that stack.
 

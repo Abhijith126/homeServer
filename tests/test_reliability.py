@@ -149,11 +149,11 @@ class HealthTests(unittest.TestCase):
     def test_unconfigured_agent_is_not_a_health_incident(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            stack = root / 'stacks/apps/beszel-agent'
+            stack = root / 'stacks/docker/beszel-agent'
             stack.mkdir(parents=True)
             (stack / 'compose.yaml').write_text('fixture')
             with patch.object(health, 'ROOT', root), patch.object(health, 'compose') as compose:
-                self.assertEqual(health.audit('apps', set()), [])
+                self.assertEqual(health.audit('docker', set()), [])
                 compose.assert_not_called()
 
     def test_lock_defers_check_but_cached_staleness_still_alerts(self):
@@ -162,25 +162,25 @@ class HealthTests(unittest.TestCase):
             now = datetime.now(timezone.utc)
             with patch.object(health, 'ROOT', root), patch.object(health, 'compose') as compose:
                 compose.return_value = json.dumps([{'time': now.isoformat()}])
-                self.assertIsNone(health.backup_freshness(root, 'restic', 'apps', 'homelab', 120))
+                self.assertIsNone(health.backup_freshness(root, 'restic', 'docker', 'homelab', 120))
                 compose.side_effect = subprocess.CalledProcessError(11, 'restic')
-                self.assertIsNone(health.backup_freshness(root, 'restic', 'apps', 'homelab', 120))
-                cache = root / '.deploy-state/apps/backup-homelab.json'
+                self.assertIsNone(health.backup_freshness(root, 'restic', 'docker', 'homelab', 120))
+                cache = root / '.deploy-state/docker/backup-homelab.json'
                 cache.write_text(json.dumps({'snapshots': [{'time': (now - timedelta(hours=121)).isoformat()}]}))
-                self.assertIn('no successful snapshot', health.backup_freshness(root, 'restic', 'apps', 'homelab', 120))
+                self.assertIn('no successful snapshot', health.backup_freshness(root, 'restic', 'docker', 'homelab', 120))
 
     def test_initial_lock_is_deferred_but_persistent_lock_and_other_errors_are_not_hidden(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             with patch.object(health, 'ROOT', root), patch.object(health, 'compose') as compose:
                 compose.side_effect = subprocess.CalledProcessError(11, 'restic')
-                self.assertIsNone(health.backup_freshness(root, 'restic', 'apps', 'homelab', 120))
-                cache = root / '.deploy-state/apps/backup-homelab.json'
+                self.assertIsNone(health.backup_freshness(root, 'restic', 'docker', 'homelab', 120))
+                cache = root / '.deploy-state/docker/backup-homelab.json'
                 cache.write_text(json.dumps({'deferred_since': (datetime.now(timezone.utc) - timedelta(hours=121)).isoformat()}))
-                self.assertIn('repository locked', health.backup_freshness(root, 'restic', 'apps', 'homelab', 120))
+                self.assertIn('repository locked', health.backup_freshness(root, 'restic', 'docker', 'homelab', 120))
                 compose.side_effect = subprocess.CalledProcessError(1, 'restic')
                 with self.assertRaises(subprocess.CalledProcessError):
-                    health.backup_freshness(root, 'restic', 'apps', 'homelab', 120)
+                    health.backup_freshness(root, 'restic', 'docker', 'homelab', 120)
 
     def test_missing_stopped_unhealthy_and_scaled_services_are_detected(self):
         services = {'db': {}, 'web': {'deploy': {'replicas': 2}}}
@@ -203,7 +203,7 @@ class HealthTests(unittest.TestCase):
     def test_audit_checks_backup_even_when_service_is_running(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            stack = root / 'stacks/apps/restic'
+            stack = root / 'stacks/docker/restic'
             stack.mkdir(parents=True)
             (stack / 'compose.yaml').write_text('fixture')
             def compose(directory, *args):
@@ -212,28 +212,28 @@ class HealthTests(unittest.TestCase):
                 if args[0] == 'ps':
                     return json.dumps([{'Service': 'restic', 'State': 'running'}])
                 self.assertIn('--host', args)
-                self.assertIn('apps', args)
+                self.assertIn('docker', args)
                 return '[]'
             with patch.object(health, 'ROOT', root), patch.object(health, 'compose', side_effect=compose):
-                self.assertIn('no successful snapshot', health.audit('apps', set())[0])
-                self.assertEqual(health.audit('apps', {'restic'}), [])
+                self.assertIn('no successful snapshot', health.audit('docker', set())[0])
+                self.assertEqual(health.audit('docker', {'restic'}), [])
 
     def test_audit_reports_docker_errors_without_exposing_output(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            stack = root / 'stacks/apps/web'
+            stack = root / 'stacks/docker/web'
             stack.mkdir(parents=True)
             (stack / 'compose.yaml').write_text('fixture')
             error = subprocess.CalledProcessError(1, 'docker', output='secret')
             with patch.object(health, 'ROOT', root), patch.object(health, 'compose', side_effect=error):
-                failures = health.audit('apps', set())
+                failures = health.audit('docker', set())
             self.assertEqual(len(failures), 1)
             self.assertNotIn('secret', failures[0])
 
 
 class RetentionTests(unittest.TestCase):
     def test_agent_labels_enter_managed_inventory(self):
-        for node in ('apps', 'storage', 'infra'):
+        for node in ('docker', 'storage'):
             containers = [{'Image': 'agent-image', 'Config': {'Labels': {'homelab.node': node}}}]
             with patch.object(retention, 'output', side_effect=['agent-container', json.dumps(containers)]):
                 used, managed = retention.inventory(node)

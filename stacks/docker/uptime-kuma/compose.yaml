@@ -1,0 +1,49 @@
+---
+# ─────────────────────────────────────────────────────────────
+# uptime-kuma — self-hosted uptime & status monitoring
+# Node: docker   Category: monitoring
+# Deploy: docker compose up -d   (identical via CLI / Ansible / Portainer)
+# ─────────────────────────────────────────────────────────────
+name: uptime-kuma
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-common: &common
+  restart: unless-stopped
+  logging: *logging
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  uptime-kuma:
+    <<: *common
+    image: louislam/uptime-kuma:2.5.9@sha256:e88415a90dd2f7efecdbc18de0490aff292764a3ac471531bf1d0481725591bd
+    container_name: uptime-kuma
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ${DOCKER_DATA}/uptime-kuma:/app/data
+    ports:
+      - "${UPTIME_KUMA_PORT}:3001"
+    healthcheck:
+      test: ["CMD-SHELL", "extra/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      homelab.managed: "true"
+      homelab.node: "docker"
+      homelab.stack: "uptime-kuma"
+      homelab.category: "monitoring"
+    networks:
+      - default
+
+networks:
+  default:
+    name: uptime-kuma

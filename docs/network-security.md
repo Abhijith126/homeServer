@@ -26,7 +26,7 @@ other firewall rules are preserved. Hook failure causes Docker's systemd start
 to fail, rather than silently claiming filtering is active.
 
 Keep a second SSH/console session open during rollout. From LAN and Tailscale,
-test DNS, Caddy, NFS, apps and container/VPN egress. From an untrusted network,
+test DNS, Caddy, NFS, docker and container/VPN egress. From an untrusted network,
 verify that admin/app ports are blocked and only configured public ports work.
 Repeat over IPv6 and after reboot. Unit tests check generated policy, not the
 behavior of your actual router, VLANs or firewall.
@@ -36,7 +36,7 @@ remove /etc/systemd/system/docker.service.d/homelab-firewall.conf, reload system
 and remove the DOCKER-USER jump to HOMELAB-DOCKER in each installed address family.
 Do not flush DOCKER-USER or Docker's own chains.
 
-NFS defaults now export only to the apps/infra IPs, not the entire LAN. Update
+NFS defaults now export only to the docker IPs, not the entire LAN. Update
 nfs_exports when those addresses change. Bootstrap generates them from configured
 addresses; existing saved bootstrap profiles need reconfiguration to update.
 no_root_squash remains explicit for root-run backups and existing ownership.

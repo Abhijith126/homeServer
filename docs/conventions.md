@@ -4,7 +4,7 @@ The contract every stack follows. If you follow this, `make validate` (and CI) p
 
 ## 1. Layout & naming
 
-- One app = one folder: `stacks/<node>/<app>/`, where `<node>` ∈ `storage | apps | infra`.
+- One app = one folder: `stacks/<node>/<app>/`, where `<node>` ∈ `storage | docker`.
 - Folder / stack / `container_name` / compose `name:` are all the same lowercase-kebab string (e.g. `pihole-unbound`).
 - Each stack folder is **self-contained**: `compose.yaml`, `.env.example`, `README.md`, `backup.sh`, `restore.sh`. It can be copied, deployed, or turned into a Helm chart on its own.
 
@@ -58,7 +58,7 @@ make config          # renders stacks/<node>/<app>/.env for every stack
 - Cross-node traffic uses **published ports on the Tailscale/LAN interface** (Docker bridge networks are per-host, so a shared network can't span nodes).
 - Each stack gets its own bridge network (`name: <app>`) for intra-stack communication.
 - A shared external `proxy` network (created by `scripts/create-networks.sh`) is used when Caddy and an app are co-located on the same host.
-- Reverse proxy is a **static, templated Caddyfile** with explicit per-node upstreams (label-based auto-discovery cannot work across three hosts).
+- Reverse proxy is a **static, templated Caddyfile** with explicit per-node upstreams (label-based auto-discovery cannot work across Docker hosts).
 
 ## 6. Logging
 
@@ -69,9 +69,9 @@ make config          # renders stacks/<node>/<app>/.env for every stack
 | Label | Value |
 | --- | --- |
 | `homelab.managed` | `"true"` |
-| `homelab.node` | `storage` / `apps` / `infra` |
+| `homelab.node` | `storage` / `docker` |
 | `homelab.stack` | the app name |
-| `homelab.category` | `media`, `arr`, `infra`, `monitoring`, `tools`, … |
+| `homelab.category` | `media`, `arr`, `docker`, `monitoring`, `tools`, … |
 
 ## 8. Backup & restore
 

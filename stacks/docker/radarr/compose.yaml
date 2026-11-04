@@ -1,0 +1,54 @@
+---
+# ─────────────────────────────────────────────────────────────
+# radarr — movie management
+# Node: docker   Category: arr
+# ─────────────────────────────────────────────────────────────
+name: radarr
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-common: &common
+  restart: unless-stopped
+  logging: *logging
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  radarr:
+    <<: *common
+    image: lscr.io/linuxserver/radarr:6.4.4.10685-ls325@sha256:ade5937813c6ae415b29db729386e53fea3ecf067a019849bafbe2d2a6ec02ba
+    container_name: radarr
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PUID: ${PUID}
+      PGID: ${PGID}
+      TZ: ${TZ}
+    volumes:
+      - ${DOCKER_DATA}/radarr:/config
+      - ${MEDIA_ROOT}/Downloads:/downloads
+      - ${MEDIA_ROOT}/Movies:/movies
+    ports:
+      - "${RADARR_PORT}:7878"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:7878/ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      homelab.managed: "true"
+      homelab.node: "docker"
+      homelab.stack: "radarr"
+      homelab.category: "arr"
+    networks:
+      - default
+
+networks:
+  default:
+    name: radarr

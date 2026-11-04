@@ -1,0 +1,63 @@
+---
+# ─────────────────────────────────────────────────────────────
+# restic — scheduled encrypted, deduplicated backups (resticker)
+# Node: docker   Category: backup
+# Backs up this node's app state to the shared repo on hdd2 (reached over NFS
+# at /mnt/nfs/backup/restic). Snapshots are tagged per host. Media lives on the
+# storage node and is backed up there — NOT here.
+# ─────────────────────────────────────────────────────────────
+name: restic
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  restic:
+    restart: unless-stopped
+    logging: *logging
+    security_opt:
+      - no-new-privileges:true
+    image: mazzolino/restic:1.8.2@sha256:685293a0bc77eb054b74b207561e7d2eda6cfc910984c5a93db8f253055118e2
+    container_name: restic
+    entrypoint: ["/bin/sh", "/backup-scheduler.sh"]
+    hostname: docker
+    environment:
+      TZ: ${TZ}
+      RESTIC_BACKUP_TIME: ${RESTIC_BACKUP_TIME}
+      BACKUP_HOST: docker
+      RESTIC_REPOSITORY: /repo
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD}
+      RESTIC_COMPRESSION: auto
+    volumes:
+      - ../../../scripts/restic-scheduler.sh:/backup-scheduler.sh:ro
+      - ${DOCKER_DATA}:/data:ro
+      - caddy-data:/volumes/caddy-data:ro
+      - caddy-config:/volumes/caddy-config:ro
+      - unbound-state:/volumes/unbound-state:ro
+      - ../../..:/checkout:ro
+      - ${RESTIC_REPO_PATH}:/repo
+    labels:
+      homelab.managed: "true"
+      homelab.node: "docker"
+      homelab.stack: "restic"
+      homelab.category: "backup"
+    networks:
+      - default
+
+networks:
+  default:
+    name: restic
+
+volumes:
+  caddy-data:
+    external: true
+    name: caddy_caddy-data
+  caddy-config:
+    external: true
+    name: caddy_caddy-config
+  unbound-state:
+    external: true
+    name: pihole-unbound_unbound-state

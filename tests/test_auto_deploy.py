@@ -23,9 +23,9 @@ class DeploymentTests(unittest.TestCase):
         for script in (self.origin / "scripts").glob("*.sh"):
             script.chmod(0o755)
         (self.origin / ".gitignore").write_text(".env\n.deploy-state/\n")
-        for node, app in [("apps", "alpha"), ("apps", "beta"),
-                          ("storage", "database"), ("infra", "caddy"),
-                          ("infra", "portainer")]:
+        for node, app in [("docker", "alpha"), ("docker", "beta"),
+                          ("storage", "database"), ("docker", "caddy"),
+                          ("docker", "portainer")]:
             stack = self.origin / "stacks" / node / app
             stack.mkdir(parents=True)
             (stack / "compose.yaml").write_text(
@@ -37,6 +37,8 @@ class DeploymentTests(unittest.TestCase):
         self.checkout = self.root / "checkout"
         self.run_git(self.root, "clone", str(self.origin), str(self.checkout))
         (self.checkout / ".env").write_text("SECRET=configured\n")
+        (self.checkout / ".deploy-state").mkdir()
+        (self.checkout / ".deploy-state/layout-v2-reviewed").touch()
         self.log = self.root / "docker.log"
         bin_dir = self.root / "bin"
         bin_dir.mkdir()
@@ -62,7 +64,7 @@ exit 0
         return subprocess.run(["git", *args], cwd=cwd, check=True,
                               capture_output=True, text=True).stdout.strip()
 
-    def deploy(self, node="apps", force=False):
+    def deploy(self, node="docker", force=False):
         command = [str(self.checkout / "scripts/auto-deploy.sh"), node]
         if force:
             command.append("--force")
@@ -73,23 +75,31 @@ exit 0
         return "".join(line for line in self.log.read_text().splitlines(keepends=True)
                        if ": ps " not in line and ": info " not in line) if self.log.exists() else ""
 
+    def test_unreviewed_layout_cannot_change_containers(self):
+        (self.checkout / '.deploy-state/layout-v2-reviewed').unlink()
+        result = self.deploy()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('docs/migration.md', result.stderr)
+        self.assertNotIn('compose up', self.lines())
+        self.assertNotIn('network inspect', self.lines())
+
     def test_merge_deploy_idempotence_and_cleanup(self):
         result = self.deploy()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("alpha: compose up -d --remove-orphans --wait", self.lines())
+        self.assertIn("alpha: compose up -d --wait", self.lines())
         self.assertNotIn("image prune", self.lines())
-        self.assertTrue((self.checkout / '.deploy-state/apps/images.json').exists())
+        self.assertTrue((self.checkout / '.deploy-state/docker/images.json').exists())
         self.assertFalse((self.checkout / "stacks/storage/database/.env").exists())
         log = self.lines()
         self.assertEqual(self.deploy().returncode, 0)
         self.assertEqual(self.lines(), log)
-        compose = self.origin / "stacks/apps/alpha/compose.yaml"
+        compose = self.origin / "stacks/docker/alpha/compose.yaml"
         compose.write_text(compose.read_text().replace("1.0.0", "1.0.1"))
         self.run_git(self.origin, "add", ".")
         self.run_git(self.origin, "commit", "-m", "Image update")
         self.assertEqual(self.deploy().returncode, 0)
         expected = self.run_git(self.origin, "rev-parse", "HEAD")
-        self.assertEqual((self.checkout / ".deploy-state/apps/revision").read_text().strip(), expected)
+        self.assertEqual((self.checkout / ".deploy-state/docker/revision").read_text().strip(), expected)
         self.assertNotEqual(log, self.lines())
 
     def test_failed_health_preserves_images_without_recording_success_and_retries(self):
@@ -97,7 +107,7 @@ exit 0
         self.assertNotEqual(self.deploy().returncode, 0)
         self.assertNotIn("image prune", self.lines())
         self.assertNotIn("image rm", self.lines())
-        self.assertFalse((self.checkout / ".deploy-state/apps/success").exists())
+        self.assertFalse((self.checkout / ".deploy-state/docker/success").exists())
         del self.env["FAIL_UP"]
         self.assertEqual(self.deploy().returncode, 0)
         self.assertNotIn("image prune", self.lines())
@@ -109,14 +119,14 @@ exit 0
         self.assertNotIn("image prune", self.lines())
 
     def test_local_edits_are_preserved(self):
-        path = self.checkout / "stacks/apps/alpha/compose.yaml"
+        path = self.checkout / "stacks/docker/alpha/compose.yaml"
         path.write_text("local edit\n")
         self.assertNotEqual(self.deploy().returncode, 0)
         self.assertEqual(path.read_text(), "local edit\n")
         self.assertEqual(self.lines(), "")
 
     def test_new_agent_does_not_block_existing_nodes_and_configured_key_enables_it(self):
-        for node in ('apps', 'storage'):
+        for node in ('docker', 'storage'):
             stack = self.origin / 'stacks' / node / 'beszel-agent'
             stack.mkdir()
             (stack / 'compose.yaml').write_text('services:\n  agent:\n    image: example:1\n')
@@ -129,13 +139,13 @@ exit 0
         self.run_git(self.origin, 'commit', '-m', 'Discover optional agent')
         self.run_git(self.checkout, 'pull', '--ff-only')
         (self.checkout / '.env').write_text('SECRET=configured\nUNRELATED=configured\n')
-        for node in ('apps', 'storage'):
+        for node in ('docker', 'storage'):
             result = self.deploy(node)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertFalse((self.checkout / 'stacks' / node / 'beszel-agent/.env').exists())
         self.assertNotIn('beszel-agent: compose', self.lines())
         (self.checkout / '.env').write_text('SECRET=configured\nUNRELATED=configured\nBESZEL_AGENT_KEY=valid-public-key\n')
-        for node in ('apps', 'storage'):
+        for node in ('docker', 'storage'):
             result = self.deploy(node)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.lines().count('beszel-agent: compose up'), 2)
@@ -148,13 +158,13 @@ exit 0
         self.assertNotEqual(log, self.lines())
 
     def test_infra_build_reload_and_optional_portainer(self):
-        result = self.deploy("infra")
+        result = self.deploy("docker")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("caddy: compose build --pull", self.lines())
         self.assertIn("caddy: compose exec -T caddy caddy reload", self.lines())
         self.assertNotIn("portainer: compose", self.lines())
         self.env["HOMELAB_SKIP_STACKS"] = ""
-        self.assertEqual(self.deploy("infra", force=True).returncode, 0)
+        self.assertEqual(self.deploy("docker", force=True).returncode, 0)
         self.assertIn("portainer: compose up", self.lines())
 
 

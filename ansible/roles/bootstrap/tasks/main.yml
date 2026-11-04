@@ -50,7 +50,7 @@
     state: directory
     mode: "0755"
   when:
-    - bootstrap_node == 'infra'
+    - bootstrap_node == 'docker'
     - "'pihole-unbound' not in bootstrap_skip"
 
 - name: Route the homelab domain to Caddy through Pi-hole
@@ -59,7 +59,7 @@
     mode: "0644"
     content: |
       # Local split DNS for the homelab reverse proxy.
-      address=/.{{ bootstrap_domain }}/{{ bootstrap_infra_ip }}
+      address=/.{{ bootstrap_domain }}/{{ bootstrap_docker_ip }}
   when:
-    - bootstrap_node == 'infra'
+    - bootstrap_node == 'docker'
     - "'pihole-unbound' not in bootstrap_skip"

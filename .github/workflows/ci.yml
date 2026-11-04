@@ -42,21 +42,21 @@ jobs:
 
       - name: Validate Caddy configuration with internal TLS
         run: |
-          docker build -t homelab-caddy-ci stacks/infra/caddy
+          docker build -t homelab-caddy-ci stacks/docker/caddy
           docker run --rm homelab-caddy-ci caddy list-modules | grep -Fx dns.providers.cloudflare
           docker run --rm \
             -e DOMAIN=home.arpa \
             -e ACME_EMAIL=admin@example.invalid \
             -e STORAGE_HOST=10.10.0.10 \
-            -e APPS_HOST=10.10.0.11 \
-            -e INFRA_HOST=10.10.0.12 \
+            -e DOCKER_HOST=10.10.0.11 \
+            -e HA_HOST=10.10.0.12 \
             -e CADDY_GLOBAL_OPTIONS=local_certs \
-            -v "$PWD/stacks/infra/caddy/Caddyfile:/etc/Caddyfile:ro" \
+            -v "$PWD/stacks/docker/caddy/Caddyfile:/etc/Caddyfile:ro" \
             homelab-caddy-ci caddy adapt --config /etc/Caddyfile --validate
 
       - name: Build and smoke-test the offline portfolio runtime
         run: |
-          docker build -t homelab-portfolio-ci stacks/apps/portfolio
+          docker build -t homelab-portfolio-ci stacks/docker/portfolio
           docker run -d --network none --name portfolio-ci homelab-portfolio-ci
           trap 'docker logs portfolio-ci; docker rm -f portfolio-ci' EXIT
           for attempt in $(seq 1 30); do

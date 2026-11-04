@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def command(node, kind, snapshot, target):
-    if node not in ('apps', 'storage', 'infra') or kind not in ('homelab', 'media'):
+    if node not in ('docker', 'storage', 'apps', 'infra') or kind not in ('homelab', 'media'):
         raise ValueError('Invalid node or snapshot kind')
     if kind == 'media' and node != 'storage':
         raise ValueError('Media snapshots belong to storage')
@@ -23,7 +23,7 @@ def command(node, kind, snapshot, target):
         raise ValueError('Destination must be an absolute, non-existing staging directory')
     if ',' in str(target) or ':' in str(target):
         raise ValueError('Destination must not contain Docker mount separators')
-    service = 'restic-media' if kind == 'media' else 'restic'
+    service = 'restic'
     return ['docker', 'compose', 'run', '--rm', '--no-deps', '--entrypoint', 'restic',
             '--volume', str(target) + ':/restore', service, 'restore', snapshot,
             '--host', node, '--tag', kind, '--target', '/restore', '--verify']
@@ -51,24 +51,24 @@ def restore(node, kind, snapshot, target, execute=False):
     if not execute:
         print('Preview only; snapshot metadata is validated on execution. Add --execute to restore into the new staging directory.')
         return
-    service = 'restic-media' if kind == 'media' else 'restic'
+    service = 'restic'
     # Listing is read-only and does not mount/create the restore destination.
     # Restic ignores host/tag filters for explicit IDs, so validate ourselves
     # and pass an unambiguous full ID even for latest.
     listing = subprocess.check_output(['docker', 'compose', 'run', '--rm', '--no-deps',
         '--entrypoint', 'restic', service, 'snapshots', '--json'],
-        cwd=ROOT / 'stacks' / node / 'restic', text=True, timeout=120)
+        cwd=ROOT / 'stacks' / ('docker' if node in ('apps', 'infra') else node) / 'restic', text=True, timeout=120)
     resolved = select_snapshot(json.loads(listing) or [], node, kind, snapshot)
     args = command(node, kind, resolved, target)
     print(f'Validated snapshot {resolved} for {node}/{kind}')
     target.mkdir(mode=0o700, parents=False, exist_ok=False)
-    subprocess.run(args, cwd=ROOT / 'stacks' / node / 'restic', check=True)
+    subprocess.run(args, cwd=ROOT / 'stacks' / ('docker' if node in ('apps', 'infra') else node) / 'restic', check=True)
     print(f'Restored and verified in {target}. Stop affected apps before copying selected data into place.')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('node', choices=['apps', 'storage', 'infra'])
+    parser.add_argument('node', choices=['docker', 'storage', 'apps', 'infra'])
     parser.add_argument('kind', choices=['homelab', 'media'])
     parser.add_argument('target', type=Path)
     parser.add_argument('--snapshot', default='latest')

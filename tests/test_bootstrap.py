@@ -60,13 +60,13 @@ class BootstrapTests(unittest.TestCase):
                               capture_output=True, text=True)
 
     def test_apps_generate_credentials_and_preserve_them_on_rerun(self):
-        data = self.configure("apps")
+        data = self.configure("docker")
         env = config.read_env(self.root / ".env")
         key = env["HOMARR_SECRET_ENCRYPTION_KEY"]
         self.assertRegex(key, r"^[a-f0-9]{64}$")
         self.assertEqual(env["RESTIC_PASSWORD"], "shared-backup-password")
         self.assertEqual(self.generate(data).returncode, 0)
-        self.configure("apps")
+        self.configure("docker")
         self.assertEqual(config.read_env(self.root / ".env")["HOMARR_SECRET_ENCRYPTION_KEY"], key)
         self.assertNotIn("shared-backup-password", self.output.getvalue())
         self.assertEqual(os.stat(self.root / ".env").st_mode & 0o777, 0o600)
@@ -85,26 +85,25 @@ class BootstrapTests(unittest.TestCase):
 
     def test_infra_internal_tls_and_custom_addresses(self):
         self.answers.update({"Storage node LAN IPv4": "10.10.0.10",
-                             "Apps node LAN IPv4": "10.10.0.11",
-                             "Infra node LAN IPv4": "10.10.0.12",
+                             "Docker node LAN IPv4": "10.10.0.11",
                              "LAN CIDR": "10.10.0.0/24"})
-        data = self.configure("infra")
+        data = self.configure("docker")
         self.assertIn("beszel-agent", data["bootstrap_skip"])
         env = config.read_env(self.root / ".env")
         self.assertEqual(env["CADDY_GLOBAL_OPTIONS"], "local_certs")
-        self.assertEqual(env["PIHOLE_HOST_IP"], "10.10.0.12")
+        self.assertEqual(env["PIHOLE_HOST_IP"], "10.10.0.11")
         self.assertEqual(data["nfs_mounts"][0]["src"], "10.10.0.10:/mnt/nas")
         result = self.generate(data)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(config.read_env(self.root / "stacks/infra/caddy/.env")["APPS_HOST"], "10.10.0.11")
+        self.assertEqual(config.read_env(self.root / "stacks/docker/caddy/.env")["DOCKER_HOST"], "10.10.0.11")
 
     def test_literal_secrets_survive_environment_roundtrip(self):
         secret = "already$safe #don't-change"
         config.write_env(self.root / ".env", {"RESTIC_PASSWORD": secret})
-        data = self.configure("apps")
+        data = self.configure("docker")
         self.assertEqual(config.read_env(self.root / ".env")["RESTIC_PASSWORD"], secret)
         self.assertEqual(self.generate(data).returncode, 0)
-        self.assertEqual(config.read_env(self.root / "stacks/apps/restic/.env")["RESTIC_PASSWORD"], secret)
+        self.assertEqual(config.read_env(self.root / "stacks/docker/restic/.env")["RESTIC_PASSWORD"], secret)
 
     def test_wireguard_credentials_reach_generated_stack(self):
         self.optional["Enable qBittorrent with your VPN account"] = True
@@ -120,9 +119,9 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(env["WIREGUARD_ADDRESSES"], "10.20.0.2/32")
 
     def test_existing_standalone_credentials_are_reused(self):
-        config.write_env(self.root / "stacks/apps/homarr/.env", {"HOMARR_SECRET_ENCRYPTION_KEY": "a" * 64})
-        config.write_env(self.root / "stacks/apps/restic/.env", {"RESTIC_PASSWORD": "existing-backup-password"})
-        self.configure("apps")
+        config.write_env(self.root / "stacks/docker/homarr/.env", {"HOMARR_SECRET_ENCRYPTION_KEY": "a" * 64})
+        config.write_env(self.root / "stacks/docker/restic/.env", {"RESTIC_PASSWORD": "existing-backup-password"})
+        self.configure("docker")
         env = config.read_env(self.root / ".env")
         self.assertEqual(env["HOMARR_SECRET_ENCRYPTION_KEY"], "a" * 64)
         self.assertEqual(env["RESTIC_PASSWORD"], "existing-backup-password")
@@ -131,12 +130,12 @@ class BootstrapTests(unittest.TestCase):
         data = self.root / "existing-data"
         (data / "homarr").mkdir(parents=True)
         self.answers["Local application data directory"] = str(data)
-        self.configure("apps")
+        self.configure("docker")
         self.assertEqual(config.read_env(self.root / ".env")["HOMARR_SECRET_ENCRYPTION_KEY"], "shared-backup-password")
 
     def test_beszel_agent_enabled_and_configured_on_every_node(self):
         self.optional["Enable Beszel agent (requires the hub's public key)"] = True
-        for node in ('apps', 'storage', 'infra'):
+        for node in ('docker', 'storage'):
             with self.subTest(node=node):
                 # Each subtest represents a separately configured machine.
                 profile = self.root / '.bootstrap/vars.json'
@@ -151,9 +150,9 @@ class BootstrapTests(unittest.TestCase):
                 self.assertEqual(env['BESZEL_AGENT_PORT'], '45876')
 
     def test_duplicate_addresses_are_rejected_before_writing_environment(self):
-        self.answers["Apps node LAN IPv4"] = "192.168.1.120"
+        self.answers["Docker node LAN IPv4"] = "192.168.1.120"
         with self.assertRaisesRegex(ValueError, "different LAN"):
-            self.configure("apps")
+            self.configure("docker")
         self.assertFalse((self.root / ".env").exists())
 
 

@@ -1,0 +1,105 @@
+# ─────────────────────────────────────────────────────────────
+# Homelab reverse-proxy routes.
+# Bootstrap supplies node LAN addresses through environment variables.
+# TLS can use Cloudflare DNS-01 or the local Caddy CA;
+# for a Tailscale-only setup swap the ACME block for `tls internal` or a
+# DNS-01 challenge (see the commented example at the bottom).
+# ─────────────────────────────────────────────────────────────
+{
+	email {$ACME_EMAIL}
+	# Selected by bootstrap: Cloudflare DNS-01 or local_certs.
+	# Token comes from cloudflare.env on the infra node (see cloudflare.env.example).
+	{$CADDY_GLOBAL_OPTIONS}
+}
+
+# Hostnames are kept identical to the Cloudflare tunnel's public hostnames so the
+# SAME URL works on LAN (here, direct) and remotely (tunnel) — split-horizon.
+
+# ── storage node (ryzen) ──
+photos.{$DOMAIN} {
+	reverse_proxy {$STORAGE_HOST}:2283
+}
+
+jellyfin.{$DOMAIN} {
+	reverse_proxy {$STORAGE_HOST}:8096
+}
+
+drive.{$DOMAIN} {
+	reverse_proxy {$STORAGE_HOST}:8082
+}
+
+torrent.{$DOMAIN} {
+	# qBittorrent WebUI (published by gluetun). Stack uses 8080; the tunnel
+	# currently points at 8083 — reconcile when qBittorrent is fixed.
+	reverse_proxy {$STORAGE_HOST}:8080
+}
+
+# ── apps node ──
+sonarr.{$DOMAIN} {
+	reverse_proxy {$DOCKER_HOST}:8989
+}
+
+radarr.{$DOMAIN} {
+	reverse_proxy {$DOCKER_HOST}:7878
+}
+
+lidarr.{$DOMAIN} {
+	reverse_proxy {$DOCKER_HOST}:8686
+}
+
+bazarr.{$DOMAIN} {
+	reverse_proxy {$DOCKER_HOST}:6767
+}
+
+prowlarr.{$DOMAIN} {
+	reverse_proxy {$DOCKER_HOST}:9696
+}
+
+server.{$DOMAIN} {
+	reverse_proxy {$DOCKER_HOST}:7575
+}
+
+has.{$DOMAIN} {
+	reverse_proxy {$HA_HOST}:8123
+}
+
+uptime.{$DOMAIN} {
+	reverse_proxy {$DOCKER_HOST}:3001
+}
+
+# Portfolio runs on the apps node.
+{$DOMAIN} {
+	reverse_proxy {$DOCKER_HOST}:3000
+}
+
+# ── infra node ──
+pihole.{$DOMAIN} {
+	redir / /admin
+	reverse_proxy {$DOCKER_HOST}:8081
+}
+
+beszel.{$DOMAIN} {
+	reverse_proxy {$DOCKER_HOST}:8090
+}
+
+docker.{$DOMAIN} {
+	# Portainer serves HTTPS with a self-signed cert on 9443.
+	reverse_proxy https://{$DOCKER_HOST}:9443 {
+		transport http {
+			tls_insecure_skip_verify
+		}
+	}
+}
+
+# ── Tailscale-only / internal TLS alternative ──
+# Replace the per-site auto-HTTPS above with internal certs by adding
+# `tls internal` inside each site block, or use a DNS-01 challenge:
+#
+#   *.{$DOMAIN} {
+#       tls {
+#           dns cloudflare {$CLOUDFLARE_API_TOKEN}
+#       }
+#       @photos host photos.{$DOMAIN}
+#       handle @photos { reverse_proxy ryzen:2283 }
+#       ...
+#   }

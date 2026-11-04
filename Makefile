@@ -9,7 +9,7 @@ help: ## Show available targets
 validate: ## Validate everything (compose, yaml, shell, secrets)
 	@./scripts/validate.sh
 
-new-app: ## Scaffold a stack: make new-app NODE=apps APP=sonarr CAT=arr
+new-app: ## Scaffold a stack: make new-app NODE=docker APP=sonarr CAT=arr
 	@./scripts/new-app.sh $(NODE) $(APP) $(CAT)
 
 networks: ## Create shared docker networks on this host
@@ -21,13 +21,13 @@ config: ## Generate every stack's .env from the root .env
 config-check: ## Verify all stack .env files exist with no unset secrets
 	@./scripts/gen-env.sh --check
 
-deploy: ## Deploy all stacks for a node: make deploy NODE=infra [SKIP="caddy"]
+deploy: ## Deploy all stacks for a node: make deploy NODE=docker [SKIP="caddy"]
 	@./scripts/deploy-node.sh $(NODE) $(if $(SKIP),--skip "$(SKIP)")
 
-auto-deploy: ## Reconcile from main now: make auto-deploy NODE=apps
+auto-deploy: ## Reconcile from main now: make auto-deploy NODE=docker
 	@./scripts/auto-deploy.sh $(NODE) --force
 
-auto-deploy-install: ## Install the timer: sudo make auto-deploy-install NODE=apps
+auto-deploy-install: ## Install the timer: sudo make auto-deploy-install NODE=docker
 	@./scripts/install-auto-deploy.sh $(NODE)
 
 fmt: ## Format shell scripts (shfmt -i 4)

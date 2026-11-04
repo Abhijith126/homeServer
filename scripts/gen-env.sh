@@ -9,7 +9,7 @@
 # Usage:
 #   ./scripts/gen-env.sh           generate all stack .env files, then verify
 #   ./scripts/gen-env.sh --check   verify only (no writes)
-#   ./scripts/gen-env.sh --node apps   generate/verify only one node
+#   ./scripts/gen-env.sh --node docker   generate/verify only one node
 #
 set -euo pipefail
 umask 077
@@ -35,15 +35,15 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
     --node)
-        case "${2:-}" in apps | storage | infra) node_root="stacks/$2" ;; *)
-            echo "--node requires apps, storage, or infra" >&2
+        case "${2:-}" in docker | storage) node_root="stacks/$2" ;; *)
+            echo "--node requires docker or storage" >&2
             exit 1
             ;;
         esac
         shift 2
         ;;
     *)
-        echo "usage: $0 [--check] [--node apps|storage|infra]" >&2
+        echo "usage: $0 [--check] [--node docker|storage]" >&2
         exit 1
         ;;
     esac

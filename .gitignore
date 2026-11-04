@@ -5,7 +5,7 @@
 !.env.example
 !**/.env.example
 
-# Caddy Cloudflare DNS-01 token — infra-only, not managed by gen-env
+# Caddy Cloudflare DNS-01 token — Docker-only, not managed by gen-env
 cloudflare.env
 **/cloudflare.env
 !**/cloudflare.env.example

@@ -1,6 +1,6 @@
 # HomeServer
 
-This repository deploys persistent services across the storage, apps, and infra
+This repository deploys persistent services across the storage and docker
 nodes. Renovate proposes image changes. After merge, node-local timers pull main
 and reconcile Compose stacks. Read `docs/automation.md` and the relevant stack
 configuration to understand the actual deployment behavior.

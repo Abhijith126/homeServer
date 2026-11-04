@@ -1,0 +1,63 @@
+---
+# portfolio — personal website on the apps node.
+# Release ZIP is baked into a local image; runtime needs no downloads.
+name: portfolio
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-common: &common
+  restart: unless-stopped
+  logging: *logging
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  portfolio:
+    <<: *common
+    image: homelab-portfolio:local
+    build:
+      context: .
+      args:
+        PORTFOLIO_REPOSITORY: "${PORTFOLIO_REPOSITORY:-Abhijith126/portfolio}"
+    platform: linux/amd64
+    container_name: portfolio
+    init: true
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      TZ: ${TZ:-Europe/Amsterdam}
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+    ports:
+      - "${PORTFOLIO_PORT:-3000}:3000"
+    working_dir: /app
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          require('http').get('http://127.0.0.1:3000/',r=>{r.resume();process.exit(r.statusCode===200?0:1)})
+          .on('error',()=>process.exit(1))
+      interval: 30s
+      timeout: 5s
+      start_period: 120s
+      retries: 3
+    labels:
+      homelab.managed: "true"
+      homelab.node: "docker"
+      homelab.stack: "portfolio"
+      homelab.category: "web"
+    networks:
+      - default
+
+networks:
+  default:
+    name: portfolio

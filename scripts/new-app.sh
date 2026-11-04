@@ -2,7 +2,7 @@
 #
 # Scaffold a new stack from the template.
 # Usage: ./scripts/new-app.sh <node> <app> [category]
-#   node: storage | apps | infra
+#   node: storage | docker
 #
 set -euo pipefail
 
@@ -13,14 +13,14 @@ category="${3:-tools}"
 
 if [[ -z "$node" || -z "$app" ]]; then
     echo "Usage: $0 <node> <app> [category]" >&2
-    echo "  node: storage | apps | infra" >&2
+    echo "  node: storage | docker" >&2
     exit 1
 fi
 
 case "$node" in
-storage | apps | infra) ;;
+storage | docker) ;;
 *)
-    echo "node must be one of: storage apps infra" >&2
+    echo "node must be one of: storage docker" >&2
     exit 1
     ;;
 esac

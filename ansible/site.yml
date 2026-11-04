@@ -2,7 +2,7 @@
 # One-command host bootstrap.
 #   ansible-galaxy collection install -r requirements.yml
 #   ansible-playbook site.yml                       # all nodes
-#   ansible-playbook site.yml --limit apps          # one node
+#   ansible-playbook site.yml --limit docker          # one node
 #   ansible-playbook site.yml --check --diff        # dry run
 # Provide the Tailscale auth key at run time (never commit it):
 #   ansible-playbook site.yml -e tailscale_authkey=tskey-auth-xxxx
@@ -21,15 +21,13 @@
   roles:
     - nfs_server
 
-- name: NFS clients (apps & infra)
-  hosts: app_nodes:infra_nodes
+- name: NFS clients (docker)
+  hosts: docker_nodes
   become: true
   roles:
     - nfs_client
 
-# Portainer agent runs on the nodes managed remotely by the BE server (apps &
-# storage). infra runs the BE server itself (stacks/infra/portainer) and manages
-# its own Docker over the local socket, so it sets enable_portainer_agent=false.
+# Portainer agent is optional on storage; Docker VM uses its local socket.
 - name: Portainer agent (managed nodes)
   hosts: all
   become: true

@@ -23,7 +23,7 @@ docker_public_udp: []
 
 # ── Docker ──
 # Debian 13 (trixie) has no Docker apt suite yet — override to "bookworm" for
-# Debian nodes (set in group_vars/apps.yml + infra.yml).
+# Debian nodes (set in group_vars/docker_nodes.yml).
 docker_apt_release: "{{ ansible_distribution_release }}"
 
 # ── Tailscale ──
@@ -32,10 +32,10 @@ tailscale_authkey: ""
 tailscale_up_args: "--ssh"
 tailscale_apt_release: "{{ ansible_distribution_release }}"
 
-# ── Portainer agent (apps & storage; infra runs the BE server) ──
+# ── Portainer agent (storage; docker runs the BE server) ──
 # Optional UI: enable explicitly if you use Portainer. Direct Git deployment needs no agent.
 enable_portainer_agent: false
-portainer_agent_version: "3.0.0"   # match the Portainer BE server (stacks/infra/portainer)
+portainer_agent_version: "3.0.0"   # match the Portainer BE server (stacks/docker/portainer)
 
 # ── NFS ──
 # Use ryzen's LAN IP, not the hostname: NFS runs over the LAN, and ryzen isn't
@@ -47,12 +47,6 @@ nfs_exports:
     options: "rw,sync,no_subtree_check,no_root_squash"
   - path: /mnt/hdd2
     clients: "192.168.1.121"
-    options: "rw,sync,no_subtree_check,no_root_squash"
-  - path: /mnt/nas
-    clients: "192.168.1.122"
-    options: "rw,sync,no_subtree_check,no_root_squash"
-  - path: /mnt/hdd2
-    clients: "192.168.1.122"
     options: "rw,sync,no_subtree_check,no_root_squash"
 nfs_mounts:
   - src: "{{ nfs_server_host }}:/mnt/nas"
