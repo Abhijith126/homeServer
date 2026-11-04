@@ -38,3 +38,6 @@ Thumbs.db
 # Local bootstrap settings, credentials, and provisioning tools
 .bootstrap/
 __pycache__/
+
+# Generated private Backrest desired configuration
+.backrest/

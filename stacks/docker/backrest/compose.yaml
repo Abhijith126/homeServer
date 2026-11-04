@@ -1,0 +1,64 @@
+---
+# Backrest manages Restic locally; pairing and first repository import are manual.
+name: backrest
+
+services:
+  backrest:
+    image: ghcr.io/garethgeorge/backrest:v1.14.1@sha256:b852979754281026230cc69fb11428e6d57c9a97784ab4a444ffc7934c53a215
+    container_name: backrest
+    hostname: docker
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    environment:
+      TZ: ${TZ}
+      BACKREST_PORT: 0.0.0.0:9898
+      BACKREST_CONFIG: /config/config.json
+      BACKREST_DATA: /state
+      BACKREST_RESTIC_COMMAND: /bin/restic
+      XDG_CACHE_HOME: /cache
+      TMPDIR: /tmp
+      RESTIC_REPOSITORY: /repo
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD}
+    ports:
+      - "${BACKREST_BIND_IP}:${BACKREST_PORT}:9898"
+    volumes:
+      - ${DOCKER_DATA}/backrest/config:/config
+      - ${DOCKER_DATA}/backrest/data:/state
+      - ${DOCKER_DATA}/backrest/cache:/cache
+      - ${DOCKER_DATA}/backrest/tmp:/tmp
+      - ${DOCKER_DATA}/backrest/restores:/restore
+      - ${RESTIC_REPO_PATH}:/repo
+      - ${DOCKER_DATA}:/sources/appdata:ro
+      - ../../..:/sources/checkout:ro
+      - caddy-data:/sources/volumes/caddy-data:ro
+      - caddy-config:/sources/volumes/caddy-config:ro
+      - unbound-state:/sources/volumes/unbound-state:ro
+    healthcheck:
+      # UI assets are public; this tests HTTP readiness, not login or backup health.
+      test: ["CMD", "curl", "--fail", "--silent", "--output", "/dev/null", "http://127.0.0.1:9898/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      homelab.managed: "true"
+      homelab.node: "docker"
+      homelab.stack: "backrest"
+      homelab.category: "backup"
+
+volumes:
+  caddy-data:
+    external: true
+    name: caddy_caddy-data
+  caddy-config:
+    external: true
+    name: caddy_caddy-config
+  unbound-state:
+    external: true
+    name: pihole-unbound_unbound-state

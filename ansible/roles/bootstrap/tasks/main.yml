@@ -25,7 +25,7 @@
     mode: "0770"
   when:
     - bootstrap_node == 'storage'
-    - "'restic' not in bootstrap_skip"
+    - "'backrest' not in bootstrap_skip"
 
 - name: Discover this node's application folders
   ansible.builtin.find:

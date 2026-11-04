@@ -90,6 +90,16 @@ class BackupTests(unittest.TestCase):
     def test_success_creates_readable_private_archive(self):
         self.dump_test(0)
 
+    def test_zero_exit_with_invalid_sql_does_not_publish_export(self):
+        with patch.object(backup.subprocess, 'check_output', side_effect=self.compose), \
+                patch.object(backup.subprocess, 'Popen') as popen:
+            process = popen.return_value.__enter__.return_value
+            process.stdout = io.BytesIO(b'not a database dump')
+            process.wait.return_value = 0
+            with self.assertRaisesRegex(RuntimeError, 'not a PostgreSQL'):
+                backup.backup(self.root, destination=self.root / 'exports')
+            self.assertEqual(list((self.root / 'exports').iterdir()), [])
+
     def dump_test(self, exit_code):
         destination = self.root / 'immich'
         destination.mkdir()
@@ -98,7 +108,7 @@ class BackupTests(unittest.TestCase):
         with patch.object(backup.subprocess, 'check_output', side_effect=self.compose), \
                 patch.object(backup.subprocess, 'Popen') as popen:
             process = popen.return_value.__enter__.return_value
-            process.stdout = io.BytesIO(b'SQL dump\n')
+            process.stdout = io.BytesIO(b'-- PostgreSQL database cluster dump\nSELECT 1;\n')
             process.wait.return_value = exit_code
             if exit_code:
                 with self.assertRaises(RuntimeError):
@@ -107,7 +117,7 @@ class BackupTests(unittest.TestCase):
             else:
                 backup.backup(self.root, True)
                 new = next(p for p in destination.iterdir() if p != old)
-                self.assertEqual(gzip.decompress(new.read_bytes()), b'SQL dump\n')
+                self.assertEqual(gzip.decompress(new.read_bytes()), b'-- PostgreSQL database cluster dump\nSELECT 1;\n')
                 self.assertEqual(new.stat().st_mode & 0o777, 0o600)
 
 

@@ -65,3 +65,7 @@ flowchart LR
 ## Firewall (UFW)
 
 Default **deny incoming**, allow outgoing. Allowed in: SSH, everything on `tailscale0`, and the per-node service ports above (from the LAN CIDR only). Managed by the Ansible `common` role.
+
+## Backup administration
+
+Backrest binds each host's LAN IP on configurable TCP 9898. It has authenticated local UIs and LAN-only multihost sync; no Caddy/Cloudflare route is added. See [network restrictions and firewall checks](backups.md#security-and-network). SSH administration forwarding or trusted internal TLS protects UI login traffic. Home Assistant's existing independent VM route remains unchanged.

@@ -61,6 +61,18 @@ for dir in "stacks/$node"/*/; do
         echo "SKIP $stack (--skip)"
         continue
     fi
+    if [[ "$stack" == backrest && ! -f ".deploy-state/$node/backrest-reviewed" ]]; then
+        echo "Backrest adoption requires docs/migration.md and .deploy-state/$node/backrest-reviewed" >&2
+        exit 1
+    fi
+    if [[ "$stack" == backrest ]]; then
+        legacy="$(docker ps --format '{{.Names}}')" || exit 1
+        if grep -qxE 'restic|restic-media|restic-check' <<<"$legacy"; then
+            echo "Legacy Restic scheduler still running; stop it manually per docs/migration.md" >&2
+            exit 1
+        fi
+        python3 scripts/backrest-config.py verify "$node" || exit 1
+    fi
     report_step "$stack: validate environment and Compose"
     if [[ ! -f "${dir}.env" ]]; then
         if [[ "$update" == true ]]; then

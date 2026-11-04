@@ -103,7 +103,7 @@ class BootstrapTests(unittest.TestCase):
         data = self.configure("docker")
         self.assertEqual(config.read_env(self.root / ".env")["RESTIC_PASSWORD"], secret)
         self.assertEqual(self.generate(data).returncode, 0)
-        self.assertEqual(config.read_env(self.root / "stacks/docker/restic/.env")["RESTIC_PASSWORD"], secret)
+        self.assertEqual(config.read_env(self.root / "stacks/docker/backrest/.env")["RESTIC_PASSWORD"], secret)
 
     def test_wireguard_credentials_reach_generated_stack(self):
         self.optional["Enable qBittorrent with your VPN account"] = True
@@ -120,7 +120,7 @@ class BootstrapTests(unittest.TestCase):
 
     def test_existing_standalone_credentials_are_reused(self):
         config.write_env(self.root / "stacks/docker/homarr/.env", {"HOMARR_SECRET_ENCRYPTION_KEY": "a" * 64})
-        config.write_env(self.root / "stacks/docker/restic/.env", {"RESTIC_PASSWORD": "existing-backup-password"})
+        config.write_env(self.root / "stacks/docker/backrest/.env", {"RESTIC_PASSWORD": "existing-backup-password"})
         self.configure("docker")
         env = config.read_env(self.root / ".env")
         self.assertEqual(env["HOMARR_SECRET_ENCRYPTION_KEY"], "a" * 64)
