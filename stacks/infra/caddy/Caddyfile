@@ -60,7 +60,7 @@ server.{$DOMAIN} {
 }
 
 has.{$DOMAIN} {
-	reverse_proxy {$APPS_HOST}:8123
+	reverse_proxy {$HA_HOST}:8123
 }
 
 uptime.{$DOMAIN} {
