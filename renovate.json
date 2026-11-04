@@ -144,7 +144,16 @@
         "docker"
       ],
       "matchFileNames": [
-        "stacks/apps/**",
+        "stacks/docker/bazarr/**",
+        "stacks/docker/beszel-agent/**",
+        "stacks/docker/homarr/**",
+        "stacks/docker/lidarr/**",
+        "stacks/docker/portfolio/**",
+        "stacks/docker/prowlarr/**",
+        "stacks/docker/radarr/**",
+        "stacks/docker/restic/**",
+        "stacks/docker/sonarr/**",
+        "stacks/docker/uptime-kuma/**",
         "stacks/storage/**"
       ],
       "matchUpdateTypes": [

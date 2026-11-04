@@ -13,8 +13,8 @@ finish_report() {
 # The function is parsed before Git updates this script in the checkout.
 main() {
     local node="${1:-}" repo_root state_dir revision fingerprint previous=""
-    case "$node" in apps | storage | infra) ;; *)
-        echo "usage: $0 <apps|storage|infra> [--force]" >&2
+    case "$node" in docker | storage) ;; *)
+        echo "usage: $0 <docker|storage> [--force]" >&2
         return 1
         ;;
     esac
@@ -62,8 +62,8 @@ main() {
     fingerprint="$({
         printf '%s\n' "$revision" "$node" "$skip"
         sha256sum .env
-        if [[ -f stacks/infra/caddy/cloudflare.env ]]; then
-            sha256sum stacks/infra/caddy/cloudflare.env
+        if [[ -f stacks/docker/caddy/cloudflare.env ]]; then
+            sha256sum stacks/docker/caddy/cloudflare.env
         fi
     } | sha256sum | cut -d ' ' -f 1)"
     [[ ! -f "$state_dir/success" ]] || previous="$(cat "$state_dir/success")"

@@ -23,7 +23,7 @@ exit 0
             dig.chmod(0o755)
             env = dict(os.environ, PATH=tmp + ':' + os.environ['PATH'], ROOT_STATUS=root_status,
                        ROOT_FLAGS=root_flags, PIHOLE_STATUS=pihole_status)
-            return subprocess.run(['bash', str(ROOT / 'stacks/infra/pihole-unbound/dns-healthcheck.sh')],
+            return subprocess.run(['bash', str(ROOT / 'stacks/docker/pihole-unbound/dns-healthcheck.sh')],
                                   env=env, capture_output=True).returncode
 
     def test_authenticated_recursion_and_forwarding_pass(self):

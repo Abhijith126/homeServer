@@ -33,7 +33,7 @@ done < <(find stacks -mindepth 3 -name compose.yaml -not -path '*/_template/*' |
 note "template smoke test (render + config)"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
-if ./scripts/render-template.sh "$tmp" smoketest apps tools >/dev/null 2>&1; then
+if ./scripts/render-template.sh "$tmp" smoketest docker tools >/dev/null 2>&1; then
     sed -i.bak 's#<image>:<tag>#traefik/whoami:v1.10.0#' "$tmp/compose.yaml"
     rm -f "$tmp/compose.yaml.bak"
     if (cd "$tmp" && docker compose --env-file .env.example config -q) 2>/tmp/cc.err; then

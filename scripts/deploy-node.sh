@@ -1,17 +1,22 @@
 #!/usr/bin/env bash
 # Deploy a node's stacks. --update pulls/builds images and waits for health.
-# Usage: deploy-node.sh <apps|storage|infra> [--skip "stack1 stack2"] [--update]
+# Usage: deploy-node.sh <docker|storage> [--skip "stack1 stack2"] [--update]
 set -uo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root" || exit 1
 node="${1:-}"
-case "$node" in apps | storage | infra) ;; *)
-    echo "usage: $0 <apps|storage|infra> [--skip \"stacks\"] [--update]" >&2
+case "$node" in docker | storage) ;; *)
+    echo "usage: $0 <docker|storage> [--skip \"stacks\"] [--update]" >&2
     exit 1
     ;;
 esac
 shift
+# Path changes require an operator to review live project identities and mounts.
+if [[ ! -f .deploy-state/layout-v2-reviewed ]]; then
+    echo "Review docs/migration.md and acknowledge layout-v2 before deployment" >&2
+    exit 1
+fi
 skip=""
 update=false
 while [[ $# -gt 0 ]]; do
@@ -101,7 +106,7 @@ for dir in "${dirs[@]}"; do
             report_step "$stack: build images" &&
             docker compose build --pull &&
             report_step "$stack: start containers and wait for health" &&
-            docker compose up -d --remove-orphans --wait --wait-timeout 300 &&
+            docker compose up -d --wait --wait-timeout 300 &&
             if [[ "$stack" == caddy ]]; then
                 report_step "$stack: reload Caddy" &&
                 docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile

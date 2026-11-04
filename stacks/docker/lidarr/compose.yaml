@@ -1,0 +1,54 @@
+---
+# ─────────────────────────────────────────────────────────────
+# lidarr — music management
+# Node: docker   Category: arr
+# ─────────────────────────────────────────────────────────────
+name: lidarr
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-common: &common
+  restart: unless-stopped
+  logging: *logging
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  lidarr:
+    <<: *common
+    image: lscr.io/linuxserver/lidarr:3.1.6.5079-ls46@sha256:9fddcf5c613361edfce390d4e6b7c364282e71e90a40ce7793077fed788f6e63
+    container_name: lidarr
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PUID: ${PUID}
+      PGID: ${PGID}
+      TZ: ${TZ}
+    volumes:
+      - ${DOCKER_DATA}/lidarr:/config
+      - ${MEDIA_ROOT}/Downloads:/downloads
+      - ${MEDIA_ROOT}/Music:/music
+    ports:
+      - "${LIDARR_PORT}:8686"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8686/ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      homelab.managed: "true"
+      homelab.node: "docker"
+      homelab.stack: "lidarr"
+      homelab.category: "arr"
+    networks:
+      - default
+
+networks:
+  default:
+    name: lidarr

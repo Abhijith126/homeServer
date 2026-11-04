@@ -1,0 +1,53 @@
+---
+# ─────────────────────────────────────────────────────────────
+# homarr — homelab dashboard
+# Node: docker   Category: dashboard
+# Mounts the docker socket (read-only) for container widgets.
+# ─────────────────────────────────────────────────────────────
+name: homarr
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-common: &common
+  restart: unless-stopped
+  logging: *logging
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  homarr:
+    <<: *common
+    image: ghcr.io/homarr-labs/homarr:v2.10.1@sha256:2844201f11ce28b98183728dea2261de2b4fd8ed5480a4eef0b7977cc1a08dc0
+    container_name: homarr
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      TZ: ${TZ}
+      SECRET_ENCRYPTION_KEY: ${HOMARR_SECRET_ENCRYPTION_KEY}
+    volumes:
+      - ${DOCKER_DATA}/homarr:/appdata
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "${HOMARR_PORT}:7575"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:7575 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      homelab.managed: "true"
+      homelab.node: "docker"
+      homelab.stack: "homarr"
+      homelab.category: "dashboard"
+    networks:
+      - default
+
+networks:
+  default:
+    name: homarr

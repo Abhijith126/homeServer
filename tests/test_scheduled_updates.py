@@ -47,7 +47,7 @@ class ScheduleTests(unittest.TestCase):
             root = Path(tmp)
             (root / '.bootstrap').mkdir()
             path = root / '.bootstrap/vars.json'
-            profile = {'bootstrap_node': 'apps', 'bootstrap_skip': ['portainer'], 'credential': 'unchanged'}
+            profile = {'bootstrap_node': 'docker', 'bootstrap_skip': ['portainer'], 'credential': 'unchanged'}
             path.write_text(json.dumps(profile))
             (root / '.env').write_text('SECRET=unchanged\n')
             config.configure_updates(root=root, schedule='monthly', update_time='04:15')

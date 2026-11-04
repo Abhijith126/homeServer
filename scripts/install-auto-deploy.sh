@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install on an existing, configured node: sudo ./scripts/install-auto-deploy.sh apps
+# Install on an existing, configured node: sudo ./scripts/install-auto-deploy.sh docker
 set -euo pipefail
 
 [[ $EUID -eq 0 ]] || {
@@ -7,8 +7,8 @@ set -euo pipefail
     exit 1
 }
 node="${1:-}"
-case "$node" in apps | storage | infra) ;; *)
-    echo "usage: sudo $0 <apps|storage|infra>" >&2
+case "$node" in docker | storage) ;; *)
+    echo "usage: sudo $0 <docker|storage>" >&2
     exit 1
     ;;
 esac

@@ -1,14 +1,15 @@
-# Automated deployment on three nodes
+# Automated deployment on two Docker nodes
 
 Renovate opens image-update PRs. Once a PR is merged to main, a systemd timer on each node pulls the Git change and deploys that node's Compose stacks. No inbound webhooks, GitHub runner on the server, or Portainer license is needed.
 
 | Machine | Deployment node | Directory |
 | --- | --- | --- |
-| apps | apps | stacks/apps |
-| ryzen | storage | stacks/storage |
-| infra | infra | stacks/infra |
+| Lenovo Docker VM | docker | stacks/docker |
+| Ryzen | storage | stacks/storage |
 
 The same scripts work on every machine and can be reused in another homelab by changing the checkout's Git remote and stack folders.
+
+Existing installations must complete [migration](migration.md) and create `.deploy-state/layout-v2-reviewed` before reconciliation is allowed.
 
 ## One-time setup on each node
 
@@ -18,7 +19,7 @@ Run this command once on each machine (requires curl):
 bash <(curl -fsSL https://raw.githubusercontent.com/Abhijith126/homeServer/main/scripts/setup.sh) --schedule weekly
 ```
 
-Choose storage on ryzen, apps on the application node, and infra on the infrastructure node. Provision storage first. The wizard installs prerequisites, configures the host, gathers local configuration and credentials, installs the timer, and starts the first deployment. See [bootstrap.md](bootstrap.md) for supported hosts, optional integrations, and storage/network prerequisites.
+Choose storage on Ryzen and docker on the Lenovo Docker VM. Provision storage first. The wizard installs prerequisites, configures the host, gathers local configuration and credentials, installs the timer, and starts the first deployment. See [bootstrap.md](bootstrap.md) for supported hosts, optional integrations, and storage/network prerequisites.
 
 For an already provisioned host, install-auto-deploy.sh remains available separately. Bootstrap supplies its mount paths and skipped stacks automatically.
 
@@ -28,14 +29,14 @@ For an already provisioned host, install-auto-deploy.sh remains available separa
 2. Record managed image IDs before replacing containers; do not delete images before deployment.
 3. If the Git revision, root .env, or Caddy token file changed, regenerate node-specific environment files. A failed attempt is retried at the next timer run.
 4. Discover all Compose stacks in that node's folder and validate them before changing containers.
-5. Back up an existing Immich database; abort that stack if the backup fails. Pull registry images, build local images such as Caddy, and run Compose up with --remove-orphans and --wait. Changed containers are recreated; unchanged containers stay running. Caddy's mounted configuration is explicitly reloaded.
+5. Back up an existing Immich database; abort that stack if the backup fails. Pull registry images, build local images such as Caddy, and run Compose up with --wait. Changed containers are recreated; unchanged containers stay running. Caddy's mounted configuration is explicitly reloaded.
 6. After successful deployment, remove previously observed homelab images unused for at least 14 days. Failed deployments preserve all images. Record success only after deployment and cleanup succeed.
 
 Retention is measured from observed disuse, not image creation age. State lives in .deploy-state/<node>/images.json. Unknown/unmanaged images are not collected; images referenced by any running or stopped container are retained. There is no force deletion, volume pruning, or automatic database rollback. Successful unchanged checks can collect expired images too. Losing the retention state can leak old images but cannot accelerate deletion.
 
-A new folder under stacks/<node>/<app> is discovered automatically on the next merge; no new deployment entry is needed. Use the existing new-app scaffolder and provide any new secrets in the node's root .env. Removed services within a Compose project are cleaned up as orphans. Removing a whole stack folder does not delete that project's containers or data; retire whole stacks deliberately with Compose down, without -v.
+A new folder under stacks/<node>/<app> is discovered automatically on the next merge; no new deployment entry is needed. Use the existing new-app scaffolder and provide any new secrets in the node's root .env. Removed services are left running for explicit operator review; orphan deletion is disabled. Removing a whole stack folder does not delete that project's containers or data; review retirement separately without deleting data.
 
-Beszel agents have a stack in each node folder, so apps, storage, and infra all
+Beszel agents have a stack in each node folder, so docker and storage all
 receive Renovate's agent updates. Without a configured BESZEL_AGENT_KEY in the
 root .env, generation, deployment and health auditing automatically skip the
 optional agent, leaving any existing container untouched. Other stacks continue
@@ -102,11 +103,11 @@ review finishes. Do not treat it as a compatibility or deployment safety gate.
 
 ```bash
 # Force a retry/reconcile even when the recorded revision matches:
-make auto-deploy NODE=apps
+make auto-deploy NODE=docker
 
 # See the timer and deployed commit:
 systemctl list-timers homelab-deploy.timer
-cat .deploy-state/apps/revision
+cat .deploy-state/docker/revision
 
 # Pause deployments:
 sudo systemctl stop homelab-deploy.timer

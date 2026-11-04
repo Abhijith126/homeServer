@@ -21,8 +21,8 @@ def compose_command():
 
 class AgentStackTests(unittest.TestCase):
     def test_agent_is_discoverable_on_each_node_and_versions_match(self):
-        canonical = ROOT / 'stacks/infra/beszel-agent'
-        for node in ('apps', 'storage', 'infra'):
+        canonical = ROOT / 'stacks/docker/beszel-agent'
+        for node in ('docker', 'storage'):
             with self.subTest(node=node):
                 directory = ROOT / 'stacks' / node / 'beszel-agent'
                 self.assertIn(directory / 'compose.yaml',
@@ -32,7 +32,7 @@ class AgentStackTests(unittest.TestCase):
                     expected = (canonical / filename).read_text()
                     if filename == 'compose.yaml':
                         self.assertIn(f'homelab.node: "{node}"', actual)
-                        actual = actual.replace(f'homelab.node: "{node}"', 'homelab.node: "infra"')
+                        actual = actual.replace(f'homelab.node: "{node}"', 'homelab.node: "docker"')
                     self.assertEqual(actual, expected)
 
     def test_all_rendered_services_restart_automatically(self):

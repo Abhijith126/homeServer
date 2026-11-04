@@ -264,7 +264,7 @@ if __name__ == '__main__':
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=('begin', 'finish'))
-    parser.add_argument('node', choices=('apps', 'storage', 'infra'))
+    parser.add_argument('node', choices=('docker', 'storage'))
     parser.add_argument('--status', type=int, default=0)
     args = parser.parse_args()
     directory = ROOT / '.deploy-state' / args.node

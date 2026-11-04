@@ -85,7 +85,9 @@ def audit(node, skip, max_hours=120):
             failures.extend(f'{stack.name}/{item}' for item in service_failures(
                 services, rows(compose(stack, 'ps', '--all', '--format', 'json'))))
             if stack.name == 'restic':
-                for service, tag in [('restic', 'homelab'), ('restic-media', 'media')]:
+                for service, tag in [('restic', 'homelab'), ('restic', 'media')]:
+                    if tag == 'media' and node != 'storage':
+                        continue
                     if service not in services:
                         continue
                     failure = backup_freshness(stack, service, node, tag, max_hours)
@@ -124,7 +126,7 @@ def notify(node, failures, directory):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('node', choices=['apps', 'storage', 'infra'])
+    parser.add_argument('node', choices=['docker', 'storage'])
     parser.add_argument('--skip', default=os.environ.get('HOMELAB_SKIP_STACKS', 'portainer'))
     parser.add_argument('--max-backup-hours', type=float, default=float(os.environ.get('HOMELAB_BACKUP_MAX_HOURS', '120')))
     parser.add_argument('--notify', action='store_true')

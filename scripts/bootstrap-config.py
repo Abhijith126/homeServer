@@ -11,7 +11,7 @@ import secrets
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-NODES = {"storage": "storage_nodes", "apps": "app_nodes", "infra": "infra_nodes"}
+NODES = {"storage": "storage_nodes", "docker": "docker_nodes"}
 SCHEDULES = {"5min", "hourly", "daily", "weekly", "monthly"}
 
 
@@ -112,7 +112,7 @@ def credential(key, existing="", generate=False):
     if generate:
         return secrets.token_hex(32)
     while True:
-        value = getpass.getpass(f"{key}" + (" (same password on all three nodes)" if key == "RESTIC_PASSWORD" else "") + ": ")
+        value = getpass.getpass(f"{key}" + (" (same password on both nodes)" if key == "RESTIC_PASSWORD" else "") + ": ")
         if usable(value) and "\n" not in value and "\r" not in value:
             return value
         print("A configured value is required.")
@@ -124,10 +124,10 @@ def configure(node="", root=ROOT, schedule=None, update_time=None):
     directory_path.mkdir(mode=0o700, exist_ok=True)
     profile_path = directory_path / "vars.json"
     previous = json.loads(profile_path.read_text()) if profile_path.exists() else {}
-    node = node or ask("Node role: storage, apps, or infra",
-                       previous.get("bootstrap_node", "apps"), lambda value: value in NODES)
+    node = node or ask("Node role: storage or docker",
+                       previous.get("bootstrap_node", "docker"), lambda value: value in NODES)
     if node not in NODES:
-        raise ValueError("Node must be storage, apps, or infra")
+        raise ValueError("Node must be storage or docker")
     if previous.get("bootstrap_node", node) != node:
         raise ValueError("This checkout is already configured for a different node")
     env = read_env(root / ".env.example")
@@ -141,15 +141,14 @@ def configure(node="", root=ROOT, schedule=None, update_time=None):
             if ("CHANGEME" in default or key in vpn_keys) and not usable(env.get(key, "")) and usable(saved.get(key, "")):
                 env[key] = saved[key]
     print(f"\nConfiguring {node}. Existing credentials are preserved.")
-    print("Provision storage first, then apps and infra.")
+    print("Provision storage first, then docker.")
     addresses = {}
     for key, label, default in [
         ("STORAGE_HOST", "Storage node LAN IPv4", "192.168.1.120"),
-        ("APPS_HOST", "Apps node LAN IPv4", "192.168.1.121"),
-        ("INFRA_HOST", "Infra node LAN IPv4", "192.168.1.122"),
+        ("DOCKER_HOST", "Docker node LAN IPv4", "192.168.1.121"),
     ]:
         addresses[key] = ask(label, env.get(key, default), ipv4)
-    if len(set(addresses.values())) != 3:
+    if len(set(addresses.values())) != 2:
         raise ValueError("Each node must have a different LAN address")
     default_net = str(ipaddress.ip_network(addresses["STORAGE_HOST"] + "/24", strict=False))
     lan = ask("LAN CIDR", env.get("LAN_NETWORK", default_net), cidr)
@@ -175,7 +174,7 @@ def configure(node="", root=ROOT, schedule=None, update_time=None):
     env.update(PUID=uid, PGID=gid, TZ=tz, DOCKER_DATA=data, MEDIA_ROOT=local_media,
                NFS_BACKUP=local_backup, RESTIC_REPO_PATH=local_backup + "/restic",
                IMMICH_LIBRARY=local_media + "/Gallery", FILEBROWSER_ROOT=local_media,
-               LAN_NETWORK=lan, LAN_CIDR=lan, PIHOLE_HOST_IP=addresses["INFRA_HOST"])
+               LAN_NETWORK=lan, LAN_CIDR=lan, PIHOLE_HOST_IP=addresses["DOCKER_HOST"])
     available = {path.parent.name for path in (root / "stacks" / node).glob("*/.env.example")}
     skipped = set(previous.get("bootstrap_skip", ["portainer"]))
     for stack, label, configured in [
@@ -196,7 +195,7 @@ def configure(node="", root=ROOT, schedule=None, update_time=None):
     if set(extra) - available:
         raise ValueError("Unknown stack(s): " + " ".join(sorted(set(extra) - available)))
     skipped.update(extra)
-    if node == "apps" and "portfolio" not in skipped:
+    if node == "docker" and "portfolio" not in skipped:
         env["PORTFOLIO_REPOSITORY"] = ask("Portfolio release repository (owner/repo)",
                                          env.get("PORTFOLIO_REPOSITORY", "Abhijith126/portfolio"),
                                          lambda value: bool(re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", value)))
@@ -210,7 +209,7 @@ def configure(node="", root=ROOT, schedule=None, update_time=None):
             env["OPENVPN_USER"] = ""
             env["OPENVPN_PASSWORD"] = ""
         env["SERVER_COUNTRIES"] = ask("VPN country", env.get("SERVER_COUNTRIES", "Netherlands"))
-    if node == "infra":
+    if node == "docker":
         domain_default = env.get("DOMAIN", "home.arpa")
         if domain_default == "home.example.com":
             domain_default = "home.arpa"
@@ -220,7 +219,7 @@ def configure(node="", root=ROOT, schedule=None, update_time=None):
                                 lambda value: "@" in value)
         env["ROUTER_IP"] = ask("Router LAN IPv4", env.get("ROUTER_IP", str(ipaddress.ip_network(lan, strict=False).network_address + 1)), ipv4)
         if "caddy" not in skipped:
-            cloud_path = root / "stacks/infra/caddy/cloudflare.env"
+            cloud_path = root / "stacks/docker/caddy/cloudflare.env"
             cloud = read_env(cloud_path)
             mode = ask("TLS mode: internal or cloudflare",
                        "cloudflare" if usable(cloud.get("CLOUDFLARE_API_TOKEN", "")) else "internal",
@@ -252,11 +251,11 @@ def configure(node="", root=ROOT, schedule=None, update_time=None):
     vars_data = {
         **deployment_schedule,
         "bootstrap_node": node, "bootstrap_skip": sorted(skipped),
-        "bootstrap_domain": env.get("DOMAIN", "home.arpa"), "bootstrap_infra_ip": addresses["INFRA_HOST"],
+        "bootstrap_domain": env.get("DOMAIN", "home.arpa"), "bootstrap_docker_ip": addresses["DOCKER_HOST"],
         "bootstrap_storage_media": storage_media, "bootstrap_storage_backup": storage_backup,
         "bootstrap_media": local_media, "bootstrap_backup": local_backup,
         "bootstrap_hosts": [{"name": name, "address": addresses[key]} for name, key in
-                            [("ryzen", "STORAGE_HOST"), ("apps", "APPS_HOST"), ("infra", "INFRA_HOST")]],
+                            [("ryzen", "STORAGE_HOST"), ("docker", "DOCKER_HOST")]],
         "homelab_user": getpass.getuser(), "homelab_uid": int(uid), "homelab_gid": int(gid),
         "timezone": tz, "docker_data_root": data, "lan_cidr": lan,
         "enable_portainer_agent": False,
@@ -266,7 +265,7 @@ def configure(node="", root=ROOT, schedule=None, update_time=None):
         "nfs_server_host": addresses["STORAGE_HOST"],
         "nfs_exports": [{"path": path, "clients": client, "options": "rw,sync,no_subtree_check,no_root_squash"}
                         for path in [storage_media, storage_backup]
-                        for client in [addresses['APPS_HOST'], addresses['INFRA_HOST']]],
+                        for client in [addresses['DOCKER_HOST']]],
         "nfs_mounts": [{"src": addresses["STORAGE_HOST"] + ":" + source, "path": destination}
                        for source, destination in [(storage_media, local_media), (storage_backup, local_backup)]],
     }

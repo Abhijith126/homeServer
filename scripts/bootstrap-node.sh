@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Clone once, then run this on each Debian/Ubuntu node.
-# Usage: ./scripts/bootstrap-node.sh [storage|apps|infra]
+# Usage: ./scripts/bootstrap-node.sh [storage|docker]
 set -euo pipefail
 umask 077
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -48,6 +48,11 @@ if command -v snap >/dev/null && snap list docker >/dev/null 2>&1; then
     exit 1
 fi
 
+# Existing containers need the incremental migration, never fresh provisioning.
+if [[ ! -f .deploy-state/layout-v2-reviewed ]] && command -v docker >/dev/null; then
+    existing="$(docker ps -aq)" || { echo "Cannot inventory Docker; review docs/migration.md" >&2; exit 1; }
+    [[ -z "$existing" ]] || { echo "Existing containers: follow docs/migration.md first" >&2; exit 1; }
+fi
 sudo -v
 sudo apt-get update
 sudo apt-get install -y python3 python3-venv python3-apt python3-requests git make curl ca-certificates util-linux
@@ -70,6 +75,8 @@ sudo env ANSIBLE_CONFIG="$repo_root/ansible/ansible.cfg" \
     -i "$repo_root/.bootstrap/inventory.json" ansible/bootstrap.yml \
     -e "@$repo_root/.bootstrap/vars.json" -e "@$repo_root/.bootstrap/auth.json"
 
+mkdir -p .deploy-state
+touch .deploy-state/layout-v2-reviewed
 mapfile -t settings < <(python3 scripts/bootstrap-config.py --settings)
 node="${settings[0]}"
 mounts="${settings[1]}"

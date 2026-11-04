@@ -66,7 +66,7 @@ def run(node, cleanup=False):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('node', choices=['apps', 'storage', 'infra'])
+    parser.add_argument('node', choices=['docker', 'storage'])
     parser.add_argument('--cleanup', action='store_true')
     args = parser.parse_args()
     run(args.node, args.cleanup)
