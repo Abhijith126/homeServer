@@ -2,6 +2,7 @@
 # ryzen — storage node. Runs the NFS server + storage stacks.
 # Firewall: NFS (2049/111) + service web UIs, from the LAN.
 ufw_allow_tcp:
+  - 9898     # Backrest UI/sync, LAN only
   - 111      # rpcbind (NFS)
   - 2049     # NFS
   - 2283     # immich

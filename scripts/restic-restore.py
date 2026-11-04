@@ -23,7 +23,7 @@ def command(node, kind, snapshot, target):
         raise ValueError('Destination must be an absolute, non-existing staging directory')
     if ',' in str(target) or ':' in str(target):
         raise ValueError('Destination must not contain Docker mount separators')
-    service = 'restic'
+    service = 'backrest'
     return ['docker', 'compose', 'run', '--rm', '--no-deps', '--entrypoint', 'restic',
             '--volume', str(target) + ':/restore', service, 'restore', snapshot,
             '--host', node, '--tag', kind, '--target', '/restore', '--verify']
@@ -51,18 +51,18 @@ def restore(node, kind, snapshot, target, execute=False):
     if not execute:
         print('Preview only; snapshot metadata is validated on execution. Add --execute to restore into the new staging directory.')
         return
-    service = 'restic'
+    service = 'backrest'
     # Listing is read-only and does not mount/create the restore destination.
     # Restic ignores host/tag filters for explicit IDs, so validate ourselves
     # and pass an unambiguous full ID even for latest.
     listing = subprocess.check_output(['docker', 'compose', 'run', '--rm', '--no-deps',
         '--entrypoint', 'restic', service, 'snapshots', '--json'],
-        cwd=ROOT / 'stacks' / ('docker' if node in ('apps', 'infra') else node) / 'restic', text=True, timeout=120)
+        cwd=ROOT / 'stacks' / ('docker' if node in ('apps', 'infra') else node) / 'backrest', text=True, timeout=120)
     resolved = select_snapshot(json.loads(listing) or [], node, kind, snapshot)
     args = command(node, kind, resolved, target)
     print(f'Validated snapshot {resolved} for {node}/{kind}')
     target.mkdir(mode=0o700, parents=False, exist_ok=False)
-    subprocess.run(args, cwd=ROOT / 'stacks' / ('docker' if node in ('apps', 'infra') else node) / 'restic', check=True)
+    subprocess.run(args, cwd=ROOT / 'stacks' / ('docker' if node in ('apps', 'infra') else node) / 'backrest', check=True)
     print(f'Restored and verified in {target}. Stop affected apps before copying selected data into place.')
 
 

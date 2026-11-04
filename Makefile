@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help validate new-app networks fmt deploy config config-check auto-deploy auto-deploy-install
+.PHONY: help validate new-app networks fmt deploy config config-check auto-deploy auto-deploy-install backrest-config backrest-retention-preview
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -17,9 +17,11 @@ networks: ## Create shared docker networks on this host
 
 config: ## Generate every stack's .env from the root .env
 	@./scripts/gen-env.sh
+	@python3 scripts/backrest-config.py render
 
 config-check: ## Verify all stack .env files exist with no unset secrets
 	@./scripts/gen-env.sh --check
+	@python3 scripts/backrest-config.py check
 
 deploy: ## Deploy all stacks for a node: make deploy NODE=docker [SKIP="caddy"]
 	@./scripts/deploy-node.sh $(NODE) $(if $(SKIP),--skip "$(SKIP)")
@@ -32,3 +34,9 @@ auto-deploy-install: ## Install the timer: sudo make auto-deploy-install NODE=do
 
 fmt: ## Format shell scripts (shfmt -i 4)
 	@shfmt -i 4 -w $$(find scripts stacks -name '*.sh')
+
+backrest-config: ## Import/reconcile Backrest config while stopped: sudo make backrest-config NODE=storage
+	@python3 scripts/backrest-config.py install $(NODE)
+
+backrest-retention-preview: ## Read-only scoped retention preview on Ryzen (never deletes)
+	@python3 scripts/backrest-retention-preview.py

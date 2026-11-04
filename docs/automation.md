@@ -9,7 +9,7 @@ Renovate opens image-update PRs. Once a PR is merged to main, a systemd timer on
 
 The same scripts work on every machine and can be reused in another homelab by changing the checkout's Git remote and stack folders.
 
-Existing installations must complete [migration](migration.md) and create `.deploy-state/layout-v2-reviewed` before reconciliation is allowed.
+Existing installations retain `.deploy-state/layout-v2-reviewed` from the node-layout migration. Backrest additionally requires [backup migration](migration.md) and `.deploy-state/<node>/backrest-reviewed` before the new backup stack can deploy. A merge must not start a second backup scheduler while legacy containers are running.
 
 ## One-time setup on each node
 
@@ -191,3 +191,7 @@ One report is sent after container changes or a failed run. It includes node/hos
 The last 50 run reports are retained as private JSON files under .deploy-state/<node>/history, including unchanged checks. Raw command output and secrets are not included in reports. Email delivery failures are recorded locally and do not fail or repeat a successful deployment; emails are not queued for retry. A powered-off node, hard-killed process, or unreachable SMTP server cannot send an alert; use Uptime Kuma for availability monitoring.
 
 Existing timers pick up the code through Git. Because the running updater is parsed before fetching, its new reporting hooks start on the following scheduled run. No timer reinstall is required. Diun has been removed from the repository; an already running Diun container must be retired separately (the updater does not delete whole removed stacks).
+
+## Backrest configuration ownership
+
+`make config`/`make config-check` render and verify private desired repo/plan settings from the root `.env`. Generation does not overwrite a running Backrest UI configuration. Reconcile schedules/managed plan fields with `sudo make backrest-config NODE=...` while backup containers are stopped; it preserves authentication and pairing. Follow [the exact migration commands](migration.md) before enabling timers. Backrest uses its own native backup/check scheduling; there is no custom Restic scheduler. Health auditing checks `plan:storage-data` / `plan:docker-appdata` freshness through the pinned Backrest image's Restic engine.

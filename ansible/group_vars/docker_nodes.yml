@@ -14,6 +14,7 @@ disable_resolved_stub: true
 enable_portainer_agent: false
 
 ufw_allow_tcp:
+  - 9898     # Backrest UI/sync, LAN only
   - 8989
   - 7878
   - 8686

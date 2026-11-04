@@ -84,10 +84,9 @@ def audit(node, skip, max_hours=120):
             services = json.loads(compose(stack, 'config', '--format', 'json'))['services']
             failures.extend(f'{stack.name}/{item}' for item in service_failures(
                 services, rows(compose(stack, 'ps', '--all', '--format', 'json'))))
-            if stack.name == 'restic':
-                for service, tag in [('restic', 'homelab'), ('restic', 'media')]:
-                    if tag == 'media' and node != 'storage':
-                        continue
+            if stack.name == 'backrest':
+                plan = 'storage-data' if node == 'storage' else 'docker-appdata'
+                for service, tag in [('backrest', 'plan:' + plan)]:
                     if service not in services:
                         continue
                     failure = backup_freshness(stack, service, node, tag, max_hours)

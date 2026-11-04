@@ -203,20 +203,20 @@ class HealthTests(unittest.TestCase):
     def test_audit_checks_backup_even_when_service_is_running(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            stack = root / 'stacks/docker/restic'
+            stack = root / 'stacks/docker/backrest'
             stack.mkdir(parents=True)
             (stack / 'compose.yaml').write_text('fixture')
             def compose(directory, *args):
                 if args[0] == 'config':
-                    return json.dumps({'services': {'restic': {}}})
+                    return json.dumps({'services': {'backrest': {}}})
                 if args[0] == 'ps':
-                    return json.dumps([{'Service': 'restic', 'State': 'running'}])
+                    return json.dumps([{'Service': 'backrest', 'State': 'running'}])
                 self.assertIn('--host', args)
                 self.assertIn('docker', args)
                 return '[]'
             with patch.object(health, 'ROOT', root), patch.object(health, 'compose', side_effect=compose):
                 self.assertIn('no successful snapshot', health.audit('docker', set())[0])
-                self.assertEqual(health.audit('docker', {'restic'}), [])
+                self.assertEqual(health.audit('docker', {'backrest'}), [])
 
     def test_audit_reports_docker_errors_without_exposing_output(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -151,7 +151,7 @@
         "stacks/docker/portfolio/**",
         "stacks/docker/prowlarr/**",
         "stacks/docker/radarr/**",
-        "stacks/docker/restic/**",
+        "stacks/docker/backrest/**",
         "stacks/docker/sonarr/**",
         "stacks/docker/uptime-kuma/**",
         "stacks/storage/**"
@@ -183,7 +183,7 @@
         "docker"
       ],
       "matchPackageNames": [
-        "mazzolino/restic"
+        "ghcr.io/garethgeorge/backrest"
       ],
       "automerge": false
     },
@@ -309,7 +309,7 @@
     {
       "description": "Final safety override: review-only infrastructure images must never inherit catch-all automerge.",
       "matchDatasources": ["docker"],
-      "matchPackageNames": ["caddy", "mazzolino/restic", "portainer/portainer-ee", "portainer/agent"],
+      "matchPackageNames": ["caddy", "ghcr.io/garethgeorge/backrest", "portainer/portainer-ee", "portainer/agent"],
       "automerge": false
     }
   ],

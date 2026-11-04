@@ -28,7 +28,7 @@ class RenovatePolicyTests(unittest.TestCase):
     def test_review_only_images_override_all_catch_all_rules(self):
         for package, filename, manager in [
             ('caddy', 'stacks/docker/caddy/Dockerfile', 'custom.regex'),
-            ('mazzolino/restic', 'stacks/docker/restic/compose.yaml', 'docker-compose'),
+            ('ghcr.io/garethgeorge/backrest', 'stacks/docker/backrest/compose.yaml', 'docker-compose'),
             ('portainer/portainer-ee', 'stacks/docker/portainer/compose.yaml', 'docker-compose'),
             ('portainer/agent', 'ansible/group_vars/all.yml', 'custom.regex'),
             ('ghcr.io/immich-app/postgres', 'stacks/storage/immich/compose.yaml', 'docker-compose'),

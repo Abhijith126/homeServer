@@ -68,3 +68,7 @@ systemctl list-timers homelab-deploy.timer
 ```
 
 The local Ansible entry point is ansible/bootstrap.yml; its inventory and variables are generated under .bootstrap. The original ansible/site.yml remains available for advanced remote provisioning.
+
+## Backrest first adoption
+
+Fresh host provisioning does not initialize a Restic repository or finish Backrest pairing. Preserve/provide the existing repository and password, configure the restricted Immich export hook on storage, and follow [Backrest import and verification](migration.md). Until `.deploy-state/<node>/backrest-reviewed` exists, deployment refuses the backup stack. This is an intentional manual prerequisite; it also prevents an old timer from starting Backrest alongside legacy jobs. Start with disabled native schedules and Keep All retention.
