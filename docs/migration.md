@@ -84,7 +84,7 @@ Generate a bcrypt authentication hash **locally**, without putting the password 
 
 ```sh
 # Prompts for a new BACKREST ADMIN password, not the existing Restic password.
-htpasswd -nB admin | cut -d: -f2 | tr -d '\n' | base64 -w0
+htpasswd -nB -C12 admin | cut -d: -f2 | tr -d '\n' | base64 -w0
 ```
 
 Copy the base64 result into ignored root `.env` as `BACKREST_AUTH_BCRYPT=...`. Protect the file with `chmod 600 .env`; never commit the hash/token/password. Initial username is `admin`. Existing Backrest auth, if any, is preserved by reconciliation; change it through the authenticated UI.
