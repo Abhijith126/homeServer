@@ -1,5 +1,5 @@
 # Downloads happen at build time, never when the container restarts.
-FROM node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 AS release
+FROM node:26-alpine@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216 AS release
 ARG PORTFOLIO_REPOSITORY=Abhijith126/portfolio
 # renovate: datasource=github-tags depName=Abhijith126/portfolio
 ARG PORTFOLIO_RELEASE=build-3-04ada73651fe
@@ -12,7 +12,7 @@ RUN apk add --no-cache curl unzip \
     && sha256sum -c portfolio-build.zip.sha256 \
     && unzip -q portfolio-build.zip -d /app
 
-FROM node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94
+FROM node:26-alpine@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 HOSTNAME=0.0.0.0 PORT=3000
 WORKDIR /app
 COPY --from=release --chown=node:node /app/ ./
