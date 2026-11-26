@@ -12,7 +12,9 @@
   "ignorePaths": [
     "stacks/_template/**"
   ],
-  "dependencyDashboard": true,
+  "dependencyDashboard": {
+    "enabled": true
+  },
   "commitBody": "",
   "commitTrailers": [],
   "timezone": "Europe/Amsterdam",
