@@ -27,6 +27,7 @@ ident = uuid.uuid4().hex[:8]
 net = "backrest-test-" + ident
 names = {n: "backrest-test-" + n + "-" + ident for n in ("storage", "docker")}
 created = []
+test_secrets = ["disposable-password", "test-only"]
 # Read only committed templates, never the caller's private root .env.
 fixture_config = root / "configuration"
 for node in ("storage", "docker"):
@@ -239,6 +240,7 @@ try:
         )["token"]
         for n in names
     }
+    test_secrets.extend(tokens.values())
     pair = api(
         "storage",
         "v1.Backrest/GeneratePairingToken",
@@ -252,6 +254,7 @@ try:
     )["token"]
     keysecret, instance = pair.rsplit("#", 1)
     key, secret = keysecret.split(":", 1)
+    test_secrets.extend((pair, secret))
     stop("docker")
     p = root / "docker/config/config.json"
     cfg = json.loads(p.read_text())
@@ -271,10 +274,15 @@ try:
         "v1.Authentication/Login",
         {"username": "admin", "password": "disposable-password"},
     )["token"]
+    test_secrets.append(tokens["docker"])
     api("docker", "v1.Backrest/Backup", {"value": "docker-appdata"}, tokens["docker"])
     docker_snapshot = await_snapshot("docker")
     assert docker_snapshot["hostname"] == "docker"
-    for attempt in range(80):
+    # Pairing persists config on both peers, which can restart the sync stream.
+    # Backrest v1.14.1's first reconnect waits 60 seconds; allow two retry windows
+    # plus grace on busy CI runners without weakening the snapshot assertion.
+    sync_deadline = time.monotonic() + 150
+    while time.monotonic() < sync_deadline:
         ops = api(
             "storage",
             "v1.Backrest/GetOperations",
@@ -283,9 +291,9 @@ try:
         )
         if docker_snapshot["id"] in json.dumps(ops):
             break
-        time.sleep(0.25)
+        time.sleep(1)
     else:
-        raise RuntimeError("Completed client operation was not synchronized")
+        raise RuntimeError("Completed client operation was not synchronized within 150s")
     print(
         "PASS official single-use pairing + authenticated API + Lenovo operation history on Ryzen"
     )
@@ -327,6 +335,18 @@ try:
         "PASS new and historical staging restores with byte comparison; repository integrity check"
     )
     print("Fixture directory (no production data):", root)
+except Exception:
+    # Only disposable fixture containers are inspected. Never print API command
+    # arguments or config files, which contain authentication and pairing keys.
+    for name in created:
+        result = subprocess.run(
+            D + ["logs", "--tail", "100", name], capture_output=True, text=True
+        )
+        diagnostic = result.stdout + result.stderr
+        for value in sorted(set(test_secrets), key=len, reverse=True):
+            diagnostic = diagnostic.replace(value, "[REDACTED]")
+        print(f"Fixture logs for {name}:\n{diagnostic}", flush=True)
+    raise
 finally:
     for name in created:
         subprocess.run(D + ["rm", "-f", name], capture_output=True)
